@@ -1,0 +1,54 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Home">
+  <h1 class="page-title">Facial Recognition Demo</h1>
+  <p class="page-subtitle">
+    Capstone project by Thavanish. B — XII B1, MVM 2025–26. The model uses 128-dimensional face
+    embeddings (via <code>face_recognition</code> + dlib) to register, identify, and verify faces.
+  </p>
+
+  <div class="card">
+    <h2>How it works</h2>
+    <p style="margin-bottom: 0.75rem;">
+      Every face gets converted into a compact 128-number vector called an embedding. Two photos of
+      the same person produce embeddings that are close together in mathematical space. Two different
+      people produce embeddings far apart. The model compares distances and uses a threshold of 0.55
+      to decide whether there's a match.
+    </p>
+    <p>
+      The pipeline: face detection (HOG) → alignment → CNN feature extraction → cosine/Euclidean
+      distance comparison. Same four steps as Apple Face ID and most other deployed systems —
+      just at a smaller scale.
+    </p>
+  </div>
+
+  <div class="grid-3">
+    <a href="/register" class="feature-card">
+      <div class="icon">🧑</div>
+      <h2>Register</h2>
+      <p>Add a face to the database by uploading a photo and giving it a name.</p>
+    </a>
+    <a href="/identify" class="feature-card">
+      <div class="icon">🔍</div>
+      <h2>Identify</h2>
+      <p>Upload a photo and search the database to find the closest match.</p>
+    </a>
+    <a href="/verify" class="feature-card">
+      <div class="icon">✅</div>
+      <h2>Verify</h2>
+      <p>Upload two photos and check whether they show the same person.</p>
+    </a>
+  </div>
+
+  <div class="card" style="margin-top: 1rem;">
+    <h3>Project context</h3>
+    <p>
+      This demo accompanies the capstone report on facial recognition technology — how it works,
+      where it's deployed, and why the bias and privacy problems are worth taking seriously.
+      The backend is Python (FastAPI + face_recognition), the frontend is Astro, deployed to
+      Cloudflare Pages.
+    </p>
+  </div>
+</Base>

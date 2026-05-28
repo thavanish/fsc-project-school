@@ -1,0 +1,161 @@
+---
+import Base from '../layouts/Base.astro';
+
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+---
+
+<Base title="Verify">
+  <h1 class="page-title">Verify Two Faces</h1>
+  <p class="page-subtitle">
+    One-to-one comparison. Upload two photos and the model tells you whether they
+    show the same person. No database needed for this one.
+  </p>
+
+  <div class="card">
+    <div class="two-col">
+
+      <!-- image 1 -->
+      <div class="field">
+        <label>First photo</label>
+        <div class="upload-zone" id="zone1">
+          <input type="file" id="file1" accept="image/*" />
+          <div class="upload-icon">🧑</div>
+          <p class="upload-hint">Click or drop</p>
+        </div>
+        <img id="preview1" class="preview-img" alt="Preview 1" />
+      </div>
+
+      <!-- image 2 -->
+      <div class="field">
+        <label>Second photo</label>
+        <div class="upload-zone" id="zone2">
+          <input type="file" id="file2" accept="image/*" />
+          <div class="upload-icon">🧑</div>
+          <p class="upload-hint">Click or drop</p>
+        </div>
+        <img id="preview2" class="preview-img" alt="Preview 2" />
+      </div>
+
+    </div>
+
+    <button class="btn" id="verify-btn" disabled>Compare faces</button>
+  </div>
+
+  <div class="result" id="result">
+    <div class="result-title" id="result-title"></div>
+    <div class="result-meta" id="result-meta"></div>
+    <div class="confidence-bar" id="conf-bar" style="display:none">
+      <div class="fill" id="conf-fill"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 1rem;">
+    <h3>What do these numbers mean?</h3>
+    <p>
+      Distance is the Euclidean gap between the two 128-dimensional face embeddings.
+      Anything below 0.55 is considered a match. Confidence is just 1 - distance, so
+      higher confidence = more similar faces. A value above ~85% is a strong match.
+    </p>
+  </div>
+</Base>
+
+<script define:vars={{ apiUrl }}>
+  const file1Input  = document.getElementById('file1');
+  const file2Input  = document.getElementById('file2');
+  const zone1       = document.getElementById('zone1');
+  const zone2       = document.getElementById('zone2');
+  const preview1    = document.getElementById('preview1');
+  const preview2    = document.getElementById('preview2');
+  const verifyBtn   = document.getElementById('verify-btn');
+  const result      = document.getElementById('result');
+  const resultTitle = document.getElementById('result-title');
+  const resultMeta  = document.getElementById('result-meta');
+  const confBar     = document.getElementById('conf-bar');
+  const confFill    = document.getElementById('conf-fill');
+
+  function checkReady() {
+    verifyBtn.disabled = !(file1Input.files?.length && file2Input.files?.length);
+  }
+
+  function setupInput(input, zone, preview) {
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      preview.src = URL.createObjectURL(file);
+      preview.classList.add('visible');
+      checkReady();
+    });
+
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      const file = e.dataTransfer?.files?.[0];
+      if (file?.type.startsWith('image/')) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        preview.src = URL.createObjectURL(file);
+        preview.classList.add('visible');
+        checkReady();
+      }
+    });
+  }
+
+  setupInput(file1Input, zone1, preview1);
+  setupInput(file2Input, zone2, preview2);
+
+  // ── verify ─────────────────────────────────────────────────────────────
+  verifyBtn.addEventListener('click', async () => {
+    const f1 = file1Input.files?.[0];
+    const f2 = file2Input.files?.[0];
+    if (!f1 || !f2) return;
+
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Comparing...';
+    result.className = 'result';
+    confBar.style.display = 'none';
+    confFill.style.background = 'var(--accent)';
+
+    const body = new FormData();
+    body.append('image1', f1);
+    body.append('image2', f2);
+
+    try {
+      const res  = await fetch(`${apiUrl}/api/verify`, { method: 'POST', body });
+      const data = await res.json();
+
+      if (!res.ok) {
+        result.classList.add('visible', 'no-match');
+        resultTitle.textContent = '✗ Error';
+        resultMeta.textContent  = data.detail ?? 'Unknown error';
+      } else if (!data.face1_detected || !data.face2_detected) {
+        result.classList.add('visible', 'warn');
+        const which = !data.face1_detected ? 'first' : 'second';
+        resultTitle.textContent = '⚠ Face not detected';
+        resultMeta.textContent  = `Couldn't find a face in the ${which} image. Try a clearer photo.`;
+      } else {
+        const pct = Math.round(data.confidence * 100);
+        if (data.same_person) {
+          result.classList.add('visible', 'match');
+          resultTitle.textContent = '✓ Same person';
+        } else {
+          result.classList.add('visible', 'no-match');
+          resultTitle.textContent = '✗ Different people';
+          confFill.style.background = 'var(--error)';
+        }
+        resultMeta.innerHTML  = `Confidence <span>${pct}%</span> &nbsp;·&nbsp; Distance <span>${data.distance}</span>`;
+        confBar.style.display = 'block';
+        confFill.style.width  = `${pct}%`;
+      }
+    } catch {
+      result.classList.add('visible', 'no-match');
+      resultTitle.textContent = '✗ Could not reach the backend';
+      resultMeta.textContent  = `Check that ${apiUrl} is running`;
+    }
+
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = 'Compare faces';
+  });
+</script>

@@ -1,0 +1,23 @@
+# python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+*.egg-info/
+dist/
+
+# backend data (don't commit face encodings)
+backend/data/*.pkl
+
+# node / astro
+node_modules/
+.astro/
+frontend/dist/
+frontend/.env
+
+# editor / os
+.DS_Store
+.vscode/
+*.swp

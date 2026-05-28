@@ -1,0 +1,35 @@
+---
+interface Props {
+  currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+
+const links = [
+  { href: '/',         label: 'Home'     },
+  { href: '/register', label: 'Register' },
+  { href: '/identify', label: 'Identify' },
+  { href: '/verify',   label: 'Verify'   },
+];
+---
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <span class="dot"></span>
+      FaceID Demo
+    </a>
+    <ul class="nav-links">
+      {links.map(({ href, label }) => (
+        <li>
+          <a
+            href={href}
+            class={currentPath === href ? 'active' : ''}
+          >
+            {label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</nav>
