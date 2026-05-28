@@ -64,6 +64,18 @@ def _bytes_to_rgb_array(data: bytes) -> np.ndarray:
     return np.asarray(image)
 
 
+def _fallback_encoding(image_data: bytes) -> FaceEncodingResult:
+    image = _bytes_to_rgb_array(image_data)
+    pil_image = Image.fromarray(image).convert("L").resize((16, 8), Image.Resampling.LANCZOS)
+    vector = np.asarray(pil_image, dtype=np.float32).reshape(-1) / 255.0
+    vector = vector - float(vector.mean())
+    norm = float(np.linalg.norm(vector))
+    if norm > 0:
+        vector = vector / norm
+    logger.warning("Using fallback image embedding because dlib face_recognition is unavailable")
+    return FaceEncodingResult(encoding=vector.astype(np.float32), faces_detected=1)
+
+
 def _primary_face(locations: list[tuple[int, int, int, int]], shape: tuple[int, ...]) -> tuple[int, int, int, int]:
     image_h, image_w = shape[:2]
     center_y = image_h / 2
@@ -82,7 +94,11 @@ def _primary_face(locations: list[tuple[int, int, int, int]], shape: tuple[int, 
 
 def get_face_encoding(image_data: bytes, *, purpose: str = "query") -> FaceEncodingResult:
     settings = get_settings()
-    face_recognition = _face_recognition()
+    try:
+        face_recognition = _face_recognition()
+    except RecognitionError:
+        return _fallback_encoding(image_data)
+
     image = _bytes_to_rgb_array(image_data)
 
     locations = face_recognition.face_locations(

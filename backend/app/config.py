@@ -5,8 +5,17 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+DEFAULT_ALLOWED_ORIGINS = (
+    "http://localhost:4321,"
+    "http://localhost:3000,"
+    "https://d593d53c.fsc-project-school.pages.dev,"
+    "https://face.thavanish.dedyn.io,"
+    "https://fsc-project-school.vercel.app"
+)
+
+
 class Settings(BaseSettings):
-    allowed_origins: str = "http://localhost:4321,http://localhost:3000,https://d593d53c.fsc-project-school.pages.dev"
+    allowed_origins: str = DEFAULT_ALLOWED_ORIGINS
     match_threshold: float = 0.55
     ambiguity_margin: float = 0.035
     max_upload_bytes: int = 4_300_000
@@ -42,11 +51,13 @@ class Settings(BaseSettings):
 
             return value
 
-        return "http://localhost:4321,http://localhost:3000,https://d593d53c.fsc-project-school.pages.dev"
+        return DEFAULT_ALLOWED_ORIGINS
 
     @property
     def allowed_origin_list(self) -> list[str]:
-        return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+        configured = [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+        defaults = [origin.strip() for origin in DEFAULT_ALLOWED_ORIGINS.split(",") if origin.strip()]
+        return sorted(set(configured + defaults))
 
     @property
     def use_blob_storage(self) -> bool:
