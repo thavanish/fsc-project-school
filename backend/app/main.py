@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
@@ -53,3 +53,8 @@ async def health_check() -> dict:
         "faces": len(index.names),
         "threshold": settings.match_threshold,
     }
+
+
+@app.head("/health", tags=["health"])
+async def health_head() -> Response:
+    return Response(status_code=200)
