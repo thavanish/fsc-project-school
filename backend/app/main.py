@@ -13,6 +13,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+settings = get_settings()
+logger.info("CORS origins: %s", settings.allowed_origin_list)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,8 +23,6 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down")
 
-
-settings = get_settings()
 
 app = FastAPI(
     title="Facial Recognition API",
@@ -32,7 +33,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
+    allow_origins=settings.allowed_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
