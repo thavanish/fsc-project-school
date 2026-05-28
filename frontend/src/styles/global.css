@@ -198,6 +198,10 @@ code {
   padding: 48px 0 36px 96px;
 }
 
+.app-main > * {
+  animation: page-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .site-footer {
   display: flex;
   justify-content: space-between;
@@ -327,7 +331,7 @@ code {
   background: transparent;
   font-size: 0.92rem;
   font-weight: 650;
-  padding-right: 14px;
+  padding: 0 14px 0 0;
   cursor: pointer;
   transition: color 160ms ease, background 160ms ease;
 }
@@ -590,6 +594,11 @@ p {
   padding: 22px;
 }
 
+.input-panel {
+  display: grid;
+  gap: 16px;
+}
+
 .panel-muted {
   background: var(--panel);
   box-shadow: none;
@@ -613,6 +622,21 @@ p {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.media-input-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(220px, 0.72fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.verify-input-grid {
+  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+}
+
+.media-upload-field {
+  margin-bottom: 0;
 }
 
 .action-grid {
@@ -750,12 +774,20 @@ input[type="text"]:focus {
   overflow: hidden;
 }
 
+.compact-camera {
+  min-height: 226px;
+}
+
 .camera-stage video {
   width: 100%;
   height: 100%;
   min-height: 330px;
   object-fit: cover;
   transform: scaleX(-1);
+}
+
+.compact-camera video {
+  min-height: 226px;
 }
 
 .camera-stage canvas {
@@ -796,6 +828,14 @@ input[type="text"]:focus {
   margin-bottom: 14px;
 }
 
+.compact-title-row {
+  margin-bottom: 10px;
+}
+
+.compact-title-row p {
+  font-size: 0.88rem;
+}
+
 .upload-zone {
   position: relative;
   display: grid;
@@ -813,6 +853,10 @@ input[type="text"]:focus {
 
 .compact-upload {
   min-height: 122px;
+}
+
+.register-upload {
+  min-height: 100%;
 }
 
 .upload-zone:hover,
@@ -861,6 +905,40 @@ input[type="text"]:focus {
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
   gap: 10px;
   min-height: 72px;
+}
+
+.selection-dock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  margin-top: 16px;
+  padding: 14px;
+}
+
+.dock-label {
+  display: block;
+  color: var(--soft);
+  font-size: 0.74rem;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.selection-dock strong {
+  display: block;
+  color: var(--ink);
+  font-size: 0.95rem;
+  margin-top: 2px;
+}
+
+.dock-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .sample-card {
@@ -1124,6 +1202,17 @@ input[type="text"]:focus {
   }
 }
 
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes scan {
   0% {
     transform: translateY(-65px);
@@ -1238,11 +1327,12 @@ input[type="text"]:focus {
     border: 1px solid var(--line);
     background: var(--paper);
     padding: 0;
+    margin-top: 0;
     box-shadow: var(--shadow-soft);
   }
 
   .theme-toggle svg {
-    margin-left: 11px;
+    margin-left: 0;
   }
 
   .theme-toggle span {
@@ -1276,6 +1366,8 @@ input[type="text"]:focus {
   .project-strip,
   .workbench,
   .register-grid,
+  .media-input-grid,
+  .verify-input-grid,
   .facts {
     grid-template-columns: 1fr;
   }
@@ -1305,6 +1397,11 @@ input[type="text"]:focus {
   .camera-stage,
   .camera-stage video {
     min-height: 260px;
+  }
+
+  .compact-camera,
+  .compact-camera video {
+    min-height: 230px;
   }
 
   .upload-zone {
@@ -1337,8 +1434,14 @@ input[type="text"]:focus {
   }
 
   .control-row,
-  .hero-actions {
+  .hero-actions,
+  .selection-dock {
     display: grid;
+  }
+
+  .dock-actions {
+    display: grid;
+    justify-content: stretch;
   }
 
   .scanner-board {

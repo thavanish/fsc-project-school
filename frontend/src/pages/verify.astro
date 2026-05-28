@@ -20,11 +20,36 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   </header>
 
   <section class="flow">
-    <div class="panel">
+    <div class="panel input-panel">
+      <div class="media-input-grid verify-input-grid">
+        <div>
+          <div class="section-title-row compact-title-row">
+            <div>
+              <h2>Camera</h2>
+              <p>Capture into either comparison slot.</p>
+            </div>
+          </div>
+          <div class="camera-stage compact-camera" id="camera-stage">
+            <video id="camera-feed" autoplay muted playsinline></video>
+            <canvas id="camera-canvas"></canvas>
+            <div class="camera-empty" id="camera-empty">
+              <strong>Camera is off</strong>
+              <span>Start it, then choose a slot.</span>
+            </div>
+          </div>
+          <div class="control-row">
+            <button class="btn btn-secondary" id="camera-btn" type="button">Start camera</button>
+          </div>
+          <div class="control-row">
+            <button class="btn" id="capture-first-btn" type="button" disabled>Use as first</button>
+            <button class="btn" id="capture-second-btn" type="button" disabled>Use as second</button>
+          </div>
+        </div>
+
       <div class="verify-grid">
         <div class="field">
           <label for="file1">First photo</label>
-          <div class="upload-zone" id="zone1">
+          <div class="upload-zone compact-upload" id="zone1">
             <input type="file" id="file1" accept="image/*" />
             <div class="upload-copy">
               <span class="upload-icon">
@@ -42,7 +67,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 
         <div class="field">
           <label for="file2">Second photo</label>
-          <div class="upload-zone" id="zone2">
+          <div class="upload-zone compact-upload" id="zone2">
             <input type="file" id="file2" accept="image/*" />
             <div class="upload-copy">
               <span class="upload-icon">
@@ -58,8 +83,15 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
           <img id="preview2" class="preview-img" alt="Second selected face preview" />
         </div>
       </div>
+      </div>
 
-      <button class="btn" id="verify-btn" disabled>Compare faces</button>
+      <div class="selection-dock">
+        <div>
+          <span class="dock-label">Ready to compare</span>
+          <strong id="selection-state">Choose two photos</strong>
+        </div>
+        <button class="btn btn-fit" id="verify-btn" disabled>Compare faces</button>
+      </div>
     </div>
 
     <div class="result" id="result">
@@ -85,14 +117,24 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const file2Input = document.getElementById('file2');
   const zone1 = document.getElementById('zone1');
   const zone2 = document.getElementById('zone2');
+  const cameraBtn = document.getElementById('camera-btn');
+  const captureFirstBtn = document.getElementById('capture-first-btn');
+  const captureSecondBtn = document.getElementById('capture-second-btn');
+  const video = document.getElementById('camera-feed');
+  const canvas = document.getElementById('camera-canvas');
+  const cameraEmpty = document.getElementById('camera-empty');
   const preview1 = document.getElementById('preview1');
   const preview2 = document.getElementById('preview2');
   const verifyBtn = document.getElementById('verify-btn');
+  const selectionState = document.getElementById('selection-state');
   const result = document.getElementById('result');
   const resultTitle = document.getElementById('result-title');
   const resultMeta = document.getElementById('result-meta');
   const confBar = document.getElementById('conf-bar');
   const confFill = document.getElementById('conf-fill');
+  let stream = null;
+  let firstFile = null;
+  let secondFile = null;
 
   function apiBase() {
     return window.faceLabBackend?.apiUrl ?? apiUrl.replace(/\/$/, '');
@@ -103,19 +145,67 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   }
 
   function checkReady() {
-    verifyBtn.disabled = !(file1Input.files?.length && file2Input.files?.length);
+    const ready = Boolean(firstFile && secondFile);
+    verifyBtn.disabled = !ready;
+    selectionState.textContent = ready ? 'Both photos selected' : firstFile || secondFile ? 'One more photo needed' : 'Choose two photos';
   }
 
-  function showPreview(input, preview) {
-    const file = input.files?.[0];
+  function setSlot(slot, file, preview) {
     if (!file) return;
+    if (slot === 'first') firstFile = file;
+    else secondFile = file;
     preview.src = URL.createObjectURL(file);
     preview.classList.add('visible');
     checkReady();
   }
 
-  function setupInput(input, zone, preview) {
-    input.addEventListener('change', () => showPreview(input, preview));
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      video.srcObject = stream;
+      cameraEmpty.classList.add('hidden');
+      cameraBtn.textContent = 'Stop camera';
+      captureFirstBtn.disabled = false;
+      captureSecondBtn.disabled = false;
+    } catch {
+      result.classList.add('visible', 'no-match');
+      resultTitle.textContent = 'Camera blocked';
+      resultMeta.textContent = 'Allow camera access or upload both photos instead.';
+    }
+  }
+
+  function stopCamera() {
+    stream?.getTracks().forEach((track) => track.stop());
+    stream = null;
+    video.srcObject = null;
+    cameraEmpty.classList.remove('hidden');
+    cameraBtn.textContent = 'Start camera';
+    captureFirstBtn.disabled = true;
+    captureSecondBtn.disabled = true;
+  }
+
+  function captureToSlot(slot) {
+    if (!stream || !video.videoWidth) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `${slot}-verify-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setSlot(slot, file, slot === 'first' ? preview1 : preview2);
+    }, 'image/jpeg', 0.92);
+  }
+
+  cameraBtn.addEventListener('click', () => {
+    if (stream) stopCamera();
+    else startCamera();
+  });
+
+  captureFirstBtn.addEventListener('click', () => captureToSlot('first'));
+  captureSecondBtn.addEventListener('click', () => captureToSlot('second'));
+
+  function setupInput(input, zone, preview, slot) {
+    input.addEventListener('change', () => setSlot(slot, input.files?.[0], preview));
 
     zone.addEventListener('dragover', (event) => {
       event.preventDefault();
@@ -132,17 +222,17 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
         const transfer = new DataTransfer();
         transfer.items.add(file);
         input.files = transfer.files;
-        showPreview(input, preview);
+        setSlot(slot, file, preview);
       }
     });
   }
 
-  setupInput(file1Input, zone1, preview1);
-  setupInput(file2Input, zone2, preview2);
+  setupInput(file1Input, zone1, preview1, 'first');
+  setupInput(file2Input, zone2, preview2, 'second');
 
   verifyBtn.addEventListener('click', async () => {
-    const first = file1Input.files?.[0];
-    const second = file2Input.files?.[0];
+    const first = firstFile;
+    const second = secondFile;
     if (!first || !second) return;
 
     verifyBtn.disabled = true;

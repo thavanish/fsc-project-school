@@ -21,25 +21,54 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 
   <div class="workbench">
     <section class="flow">
-      <div class="panel">
-        <div class="field">
-          <label for="file-input">Photo to identify</label>
-          <div class="upload-zone" id="upload-zone">
-            <input type="file" id="file-input" accept="image/*" />
-            <div class="upload-copy">
-              <span class="upload-icon">
-                <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-              </span>
-              <p class="upload-hint">Drop a face photo for lookup</p>
+      <div class="panel input-panel">
+        <div class="media-input-grid">
+          <div>
+            <div class="section-title-row compact-title-row">
+              <div>
+                <h2>Camera</h2>
+                <p>Take a fresh lookup photo.</p>
+              </div>
+            </div>
+            <div class="camera-stage compact-camera" id="camera-stage">
+              <video id="camera-feed" autoplay muted playsinline></video>
+              <canvas id="camera-canvas"></canvas>
+              <div class="camera-empty" id="camera-empty">
+                <strong>Camera is off</strong>
+                <span>Start it to capture one photo.</span>
+              </div>
+            </div>
+            <div class="control-row">
+              <button class="btn btn-secondary" id="camera-btn" type="button">Start camera</button>
+              <button class="btn" id="capture-btn" type="button" disabled>Use frame</button>
             </div>
           </div>
-          <img id="preview" class="preview-img" alt="Selected face preview" />
+
+          <div class="field media-upload-field">
+            <label for="file-input">Upload</label>
+            <div class="upload-zone compact-upload" id="upload-zone">
+              <input type="file" id="file-input" accept="image/*" />
+              <div class="upload-copy">
+                <span class="upload-icon">
+                  <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                </span>
+                <p class="upload-hint">Drop a face photo for lookup</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <button class="btn" id="identify-btn" disabled>Find a match</button>
+        <div class="selection-dock">
+          <div>
+            <span class="dock-label">Selected photo</span>
+            <strong id="selection-name">Nothing selected</strong>
+          </div>
+          <button class="btn btn-fit" id="identify-btn" disabled>Find a match</button>
+        </div>
+        <img id="preview" class="preview-img" alt="Selected face preview" />
       </div>
 
       <div class="result" id="result">
@@ -66,8 +95,14 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 <script define:vars={{ apiUrl }}>
   const fileInput = document.getElementById('file-input');
   const uploadZone = document.getElementById('upload-zone');
+  const cameraBtn = document.getElementById('camera-btn');
+  const captureBtn = document.getElementById('capture-btn');
+  const video = document.getElementById('camera-feed');
+  const canvas = document.getElementById('camera-canvas');
+  const cameraEmpty = document.getElementById('camera-empty');
   const preview = document.getElementById('preview');
   const identifyBtn = document.getElementById('identify-btn');
+  const selectionName = document.getElementById('selection-name');
   const result = document.getElementById('result');
   const resultTitle = document.getElementById('result-title');
   const resultMeta = document.getElementById('result-meta');
@@ -75,6 +110,8 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const confFill = document.getElementById('conf-fill');
   const faceList = document.getElementById('face-list');
   const faceCount = document.getElementById('face-count');
+  let stream = null;
+  let selectedFile = null;
 
   function apiBase() {
     return window.faceLabBackend?.apiUrl ?? apiUrl.replace(/\/$/, '');
@@ -84,15 +121,57 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
     await window.faceLabBackend?.ready;
   }
 
-  function showPreview(file) {
+  function setSelectedFile(file, label = file.name || 'Camera photo') {
+    selectedFile = file;
     preview.src = URL.createObjectURL(file);
     preview.classList.add('visible');
+    selectionName.textContent = label;
     identifyBtn.disabled = false;
   }
 
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      video.srcObject = stream;
+      cameraEmpty.classList.add('hidden');
+      cameraBtn.textContent = 'Stop camera';
+      captureBtn.disabled = false;
+    } catch {
+      result.classList.add('visible', 'no-match');
+      resultTitle.textContent = 'Camera blocked';
+      resultMeta.textContent = 'Allow camera access or upload a photo instead.';
+    }
+  }
+
+  function stopCamera() {
+    stream?.getTracks().forEach((track) => track.stop());
+    stream = null;
+    video.srcObject = null;
+    cameraEmpty.classList.remove('hidden');
+    cameraBtn.textContent = 'Start camera';
+    captureBtn.disabled = true;
+  }
+
+  cameraBtn.addEventListener('click', () => {
+    if (stream) stopCamera();
+    else startCamera();
+  });
+
+  captureBtn.addEventListener('click', () => {
+    if (!stream || !video.videoWidth) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `identify-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setSelectedFile(file, 'Camera capture');
+    }, 'image/jpeg', 0.92);
+  });
+
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0];
-    if (file) showPreview(file);
+    if (file) setSelectedFile(file);
   });
 
   uploadZone.addEventListener('dragover', (event) => {
@@ -110,12 +189,12 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
       const transfer = new DataTransfer();
       transfer.items.add(file);
       fileInput.files = transfer.files;
-      showPreview(file);
+      setSelectedFile(file);
     }
   });
 
   identifyBtn.addEventListener('click', async () => {
-    const file = fileInput.files?.[0];
+    const file = selectedFile;
     if (!file) return;
 
     identifyBtn.disabled = true;
