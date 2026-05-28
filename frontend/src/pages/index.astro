@@ -3,52 +3,82 @@ import Base from '../layouts/Base.astro';
 ---
 
 <Base title="Home">
-  <h1 class="page-title">Facial Recognition Demo</h1>
-  <p class="page-subtitle">
-    Capstone project by Thavanish. B — XII B1, MVM 2025–26. The model uses 128-dimensional face
-    embeddings (via <code>face_recognition</code> + dlib) to register, identify, and verify faces.
-  </p>
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">Face Lab</p>
+      <h1>Small face checks, no ceremony.</h1>
+      <p class="page-subtitle">
+        Add a person, find a person, or compare two photos. The app keeps the math visible enough to trust.
+      </p>
+    </div>
+    <aside class="hero-note">
+      <strong>Cutoff: 0.55</strong>
+      <p>Lower distance means the faces look closer to the model.</p>
+    </aside>
+  </header>
 
-  <div class="card">
-    <h2>How it works</h2>
-    <p style="margin-bottom: 0.75rem;">
-      Every face gets converted into a compact 128-number vector called an embedding. Two photos of
-      the same person produce embeddings that are close together in mathematical space. Two different
-      people produce embeddings far apart. The model compares distances and uses a threshold of 0.55
-      to decide whether there's a match.
-    </p>
-    <p>
-      The pipeline: face detection (HOG) → alignment → CNN feature extraction → cosine/Euclidean
-      distance comparison. Same four steps as Apple Face ID and most other deployed systems —
-      just at a smaller scale.
-    </p>
-  </div>
+  <section class="panel">
+    <h2>How the app reads a face</h2>
+    <ol class="number-list">
+      <li>The detector finds one face in the photo and ignores the rest of the scene.</li>
+      <li>The model turns that face into 128 numbers called an embedding.</li>
+      <li>The app compares distances. Close numbers usually mean the same person. Far numbers usually mean no.</li>
+      <li>A distance below 0.55 counts as a match for this capstone build.</li>
+    </ol>
+  </section>
 
-  <div class="grid-3">
-    <a href="/register" class="feature-card">
-      <div class="icon">🧑</div>
-      <h2>Register</h2>
-      <p>Add a face to the database by uploading a photo and giving it a name.</p>
+  <nav class="action-grid" aria-label="Face Lab tasks">
+    <a href="/register" class="action-card">
+      <span class="icon-shell">
+        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <line x1="20" y1="8" x2="20" y2="14"></line>
+          <line x1="23" y1="11" x2="17" y2="11"></line>
+        </svg>
+      </span>
+      <span>
+        <h2>Register</h2>
+        <p>Put a named face in the list.</p>
+      </span>
     </a>
-    <a href="/identify" class="feature-card">
-      <div class="icon">🔍</div>
-      <h2>Identify</h2>
-      <p>Upload a photo and search the database to find the closest match.</p>
+    <a href="/identify" class="action-card">
+      <span class="icon-shell">
+        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </span>
+      <span>
+        <h2>Identify</h2>
+        <p>Ask the list for its closest person.</p>
+      </span>
     </a>
-    <a href="/verify" class="feature-card">
-      <div class="icon">✅</div>
-      <h2>Verify</h2>
-      <p>Upload two photos and check whether they show the same person.</p>
+    <a href="/verify" class="action-card">
+      <span class="icon-shell">
+        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 12l2 2 4-4"></path>
+          <path d="M21 12c-1 5-4 8-9 10-5-2-8-5-9-10V5l9-3 9 3z"></path>
+        </svg>
+      </span>
+      <span>
+        <h2>Verify</h2>
+        <p>See whether two photos agree.</p>
+      </span>
     </a>
-  </div>
+  </nav>
 
-  <div class="card" style="margin-top: 1rem;">
-    <h3>Project context</h3>
-    <p>
-      This demo accompanies the capstone report on facial recognition technology — how it works,
-      where it's deployed, and why the bias and privacy problems are worth taking seriously.
-      The backend is Python (FastAPI + face_recognition), the frontend is Astro, deployed to
-      Cloudflare Pages.
-    </p>
-  </div>
+  <section class="facts">
+    <div class="panel panel-muted">
+      <h2>What is inside</h2>
+      <p>
+        The backend uses FastAPI, dlib, and face_recognition. The frontend is Astro. The point is simple:
+        show the decision, the distance, and the confidence without hiding the rough edges.
+      </p>
+    </div>
+    <div class="panel panel-muted">
+      <h3>Best photos</h3>
+      <p>Front facing, bright, and uncropped. Sunglasses and motion blur make the model guess harder.</p>
+    </div>
+  </section>
 </Base>

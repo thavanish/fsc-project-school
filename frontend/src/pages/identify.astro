@@ -5,152 +5,177 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 ---
 
 <Base title="Identify">
-  <h1 class="page-title">Identify a Face</h1>
-  <p class="page-subtitle">
-    One-to-many lookup. Upload a photo and the model searches the entire database
-    for the closest match.
-  </p>
-
-  <div class="two-col" style="align-items: start;">
-
-    <!-- left: upload + result -->
+  <header class="page-head">
     <div>
-      <div class="card">
-        <label>Photo to identify</label>
-        <div class="upload-zone" id="upload-zone">
-          <input type="file" id="file-input" accept="image/*" />
-          <div class="upload-icon">🔍</div>
-          <p class="upload-hint">Click or drop an image here</p>
+      <p class="eyebrow">Identify</p>
+      <h1>Find the closest name.</h1>
+      <p class="page-subtitle">
+        Send one photo through the saved list. You get the nearest name, distance, and confidence.
+      </p>
+    </div>
+    <aside class="hero-note desktop-only">
+      <strong>Needs saved faces</strong>
+      <p>If the list is empty, register someone first.</p>
+    </aside>
+  </header>
+
+  <div class="workbench">
+    <section class="flow">
+      <div class="panel">
+        <div class="field">
+          <label for="file-input">Photo to identify</label>
+          <div class="upload-zone" id="upload-zone">
+            <input type="file" id="file-input" accept="image/*" />
+            <div class="upload-copy">
+              <span class="upload-icon">
+                <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </span>
+              <p class="upload-hint">Drop a face photo for lookup</p>
+            </div>
+          </div>
+          <img id="preview" class="preview-img" alt="Selected face preview" />
         </div>
-        <img id="preview" class="preview-img" alt="Preview" />
-        <button class="btn" id="identify-btn" disabled>Identify</button>
+
+        <button class="btn" id="identify-btn" disabled>Find a match</button>
       </div>
 
       <div class="result" id="result">
         <div class="result-title" id="result-title"></div>
         <div class="result-meta" id="result-meta"></div>
-        <div class="confidence-bar" id="conf-bar" style="display:none">
+        <div class="confidence-bar" id="conf-bar" hidden>
           <div class="fill" id="conf-fill"></div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- right: registered faces sidebar -->
-    <div class="card">
-      <h3>Database (<span id="face-count">—</span>)</h3>
+    <aside class="panel panel-muted">
+      <h3>Saved faces (<span id="face-count">0</span>)</h3>
       <ul class="face-list" id="face-list">
-        <li class="empty">Loading...</li>
+        <li class="empty">Checking the list.</li>
       </ul>
-      <p style="margin-top: 0.75rem; font-size: 0.82rem;">
-        No faces yet? Go to <a href="/register">Register</a> to add some.
+      <p class="side-note">
+        No names here? <a href="/register">Save a face</a> before lookup.
       </p>
-    </div>
-
+    </aside>
   </div>
 </Base>
 
 <script define:vars={{ apiUrl }}>
-  const fileInput   = document.getElementById('file-input');
-  const uploadZone  = document.getElementById('upload-zone');
-  const preview     = document.getElementById('preview');
+  const fileInput = document.getElementById('file-input');
+  const uploadZone = document.getElementById('upload-zone');
+  const preview = document.getElementById('preview');
   const identifyBtn = document.getElementById('identify-btn');
-  const result      = document.getElementById('result');
+  const result = document.getElementById('result');
   const resultTitle = document.getElementById('result-title');
-  const resultMeta  = document.getElementById('result-meta');
-  const confBar     = document.getElementById('conf-bar');
-  const confFill    = document.getElementById('conf-fill');
-  const faceList    = document.getElementById('face-list');
-  const faceCount   = document.getElementById('face-count');
+  const resultMeta = document.getElementById('result-meta');
+  const confBar = document.getElementById('conf-bar');
+  const confFill = document.getElementById('conf-fill');
+  const faceList = document.getElementById('face-list');
+  const faceCount = document.getElementById('face-count');
 
-  // ── file selection ─────────────────────────────────────────────────────
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files?.[0];
-    if (!file) return;
+  function showPreview(file) {
     preview.src = URL.createObjectURL(file);
     preview.classList.add('visible');
     identifyBtn.disabled = false;
+  }
+
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
+    if (file) showPreview(file);
   });
 
-  uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+
   uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-  uploadZone.addEventListener('drop', (e) => {
-    e.preventDefault();
+
+  uploadZone.addEventListener('drop', (event) => {
+    event.preventDefault();
     uploadZone.classList.remove('dragover');
-    const file = e.dataTransfer?.files?.[0];
+    const file = event.dataTransfer?.files?.[0];
     if (file?.type.startsWith('image/')) {
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      fileInput.files = dt.files;
-      preview.src = URL.createObjectURL(file);
-      preview.classList.add('visible');
-      identifyBtn.disabled = false;
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileInput.files = transfer.files;
+      showPreview(file);
     }
   });
 
-  // ── identify ───────────────────────────────────────────────────────────
   identifyBtn.addEventListener('click', async () => {
     const file = fileInput.files?.[0];
     if (!file) return;
 
     identifyBtn.disabled = true;
-    identifyBtn.textContent = 'Searching...';
+    identifyBtn.textContent = 'Searching';
     result.className = 'result';
-    confBar.style.display = 'none';
+    confBar.hidden = true;
+    confFill.style.background = 'var(--accent)';
 
     const body = new FormData();
     body.append('image', file);
 
     try {
-      const res  = await fetch(`${apiUrl}/api/identify`, { method: 'POST', body });
+      const res = await fetch(`${apiUrl}/api/identify`, { method: 'POST', body });
       const data = await res.json();
 
       if (!res.ok) {
         result.classList.add('visible', 'no-match');
-        resultTitle.textContent = '✗ Error';
-        resultMeta.textContent  = data.detail ?? 'Unknown error';
+        resultTitle.textContent = 'Lookup failed';
+        resultMeta.textContent = data.detail ?? 'The backend did not explain why.';
       } else if (data.faces_detected === 0) {
         result.classList.add('visible', 'warn');
-        resultTitle.textContent = '⚠ No face detected';
-        resultMeta.innerHTML    = 'The model couldn\'t find a face in this image. Try a clearer, brighter photo.';
+        resultTitle.textContent = 'No face found';
+        resultMeta.textContent = 'Try a brighter photo with one clear face.';
       } else if (data.matched) {
         const pct = Math.round(data.confidence * 100);
         result.classList.add('visible', 'match');
-        resultTitle.textContent = `✓ Match: ${data.name}`;
-        resultMeta.innerHTML    = `Confidence <span>${pct}%</span> &nbsp;·&nbsp; Distance <span>${data.distance}</span>`;
-        confBar.style.display   = 'block';
-        confFill.style.width    = `${pct}%`;
+        resultTitle.textContent = `Closest match: ${data.name}`;
+        resultMeta.innerHTML = `Confidence <span>${pct}%</span>, distance <span>${data.distance}</span>`;
+        confBar.hidden = false;
+        confFill.style.width = `${pct}%`;
       } else {
         const pct = Math.round(data.confidence * 100);
         result.classList.add('visible', 'no-match');
-        resultTitle.textContent = '✗ No match found';
-        resultMeta.innerHTML    = `Best similarity <span>${pct}%</span> — below the match threshold. Register this person first.`;
-        confBar.style.display   = 'block';
-        confFill.style.width    = `${pct}%`;
-        confFill.style.background = 'var(--error)';
+        resultTitle.textContent = 'No saved face matches';
+        resultMeta.innerHTML = `Closest score <span>${pct}%</span>, still below the cutoff. Register this person first.`;
+        confBar.hidden = false;
+        confFill.style.width = `${pct}%`;
+        confFill.style.background = 'var(--danger)';
       }
     } catch {
       result.classList.add('visible', 'no-match');
-      resultTitle.textContent = '✗ Could not reach the backend';
-      resultMeta.textContent  = `Check that ${apiUrl} is running`;
+      resultTitle.textContent = 'Backend is quiet';
+      resultMeta.textContent = `Start the API at ${apiUrl}.`;
     }
 
     identifyBtn.disabled = false;
-    identifyBtn.textContent = 'Identify';
+    identifyBtn.textContent = 'Find a match';
   });
 
-  // ── load face list ─────────────────────────────────────────────────────
   async function loadFaces() {
     try {
-      const res  = await fetch(`${apiUrl}/api/faces/`);
+      const res = await fetch(`${apiUrl}/api/faces/`);
       const data = await res.json();
       faceCount.textContent = data.count;
       if (!data.faces.length) {
-        faceList.innerHTML = '<li class="empty">No faces registered yet.</li>';
+        faceList.innerHTML = '<li class="empty">No saved faces yet.</li>';
         return;
       }
-      faceList.innerHTML = data.faces.map(name => `<li><span>${name}</span></li>`).join('');
+      faceList.replaceChildren();
+      data.faces.forEach((name) => {
+        const item = document.createElement('li');
+        const label = document.createElement('span');
+        label.textContent = name;
+        item.append(label);
+        faceList.append(item);
+      });
     } catch {
-      faceList.innerHTML = '<li class="empty">Could not load — backend offline?</li>';
+      faceList.innerHTML = '<li class="empty">The list did not answer.</li>';
     }
   }
 

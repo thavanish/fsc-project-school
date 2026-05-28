@@ -9,7 +9,7 @@ interface Props {
 
 const {
   title,
-  description = "Facial recognition demo — Thavanish B's CS capstone, XII B1, MVM 2025–26.",
+  description = "Facial recognition capstone by Thavanish B, XII B1, Maharishi Vidya Mandir.",
 } = Astro.props;
 
 const currentPath = Astro.url.pathname;
@@ -20,19 +20,16 @@ const currentPath = Astro.url.pathname;
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{title} — FaceID Demo</title>
+  <title>{title} | Face Lab</title>
   <meta name="description" content={description} />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 </head>
 <body>
   <Nav currentPath={currentPath} />
-  <main>
+  <main class="app-main">
     <slot />
   </main>
-  <footer>
-    <p>Built by Thavanish. B &nbsp;·&nbsp; XII B1, Maharishi Vidya Mandir &nbsp;·&nbsp; 2025–26</p>
+  <footer class="site-footer">
+    <p>Thavanish B, XII B1, Maharishi Vidya Mandir, 2025 to 2026</p>
   </footer>
 </body>
 </html>

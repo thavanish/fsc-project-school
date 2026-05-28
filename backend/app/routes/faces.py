@@ -2,6 +2,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.models.schemas import DeleteResponse, FaceListResponse, RegisterResponse
 from app.services import recognition, storage
+from app.services.uploads import read_image_upload
 
 router = APIRouter()
 
@@ -11,13 +12,14 @@ async def register_face(
     name: str = Form(..., description="Name to associate with this face"),
     image: UploadFile = File(..., description="Photo containing the face to register"),
 ) -> RegisterResponse:
-    if not image.content_type or not image.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Upload must be an image file")
+    clean_name = name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
 
-    image_data = await image.read()
-    encoding = recognition.get_face_encoding(image_data)
+    image_data = await read_image_upload(image)
+    result = recognition.get_face_encoding(image_data, purpose="register")
 
-    if encoding is None:
+    if result.encoding is None:
         raise HTTPException(
             status_code=422,
             detail=(
@@ -26,28 +28,27 @@ async def register_face(
             ),
         )
 
-    clean_name = name.strip()
-    storage.add(clean_name, encoding)
+    await storage.add(clean_name, result.encoding)
 
     return RegisterResponse(
         success=True,
         name=clean_name,
-        message=f"'{clean_name}' has been registered.",
+        message=f"{clean_name} has been registered.",
     )
 
 
 @router.get("/", response_model=FaceListResponse)
-def list_faces() -> FaceListResponse:
-    face_names = storage.names()
+async def list_faces() -> FaceListResponse:
+    face_names = await storage.names()
     return FaceListResponse(faces=face_names, count=len(face_names))
 
 
 @router.delete("/{name}", response_model=DeleteResponse)
-def delete_face(name: str) -> DeleteResponse:
-    removed = storage.remove(name)
+async def delete_face(name: str) -> DeleteResponse:
+    removed = await storage.remove(name)
     if not removed:
         raise HTTPException(
             status_code=404,
-            detail=f"No face found with the name '{name}'",
+            detail=f"No face found with the name {name}",
         )
-    return DeleteResponse(success=True, message=f"'{name}' removed from the database.")
+    return DeleteResponse(success=True, message=f"{name} removed from the database.")

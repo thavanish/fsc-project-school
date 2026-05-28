@@ -6,10 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.routes import analysis, faces
+from app.services import storage
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s  %(name)s  %(levelname)s  %(message)s",
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -19,15 +20,15 @@ logger.info("CORS origins: %s", settings.allowed_origin_list)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting — face encodings will load from disk on first request")
+    logger.info("Starting Face Lab API with %s storage", "blob" if settings.use_blob_storage else "local")
     yield
-    logger.info("Shutting down")
+    logger.info("Stopping Face Lab API")
 
 
 app = FastAPI(
-    title="Facial Recognition API",
-    description="Backend for Thavanish's facial recognition capstone (XII B1, MVM 2025–26).",
-    version="1.0.0",
+    title="Face Lab API",
+    description="Backend for Thavanish B's facial recognition capstone.",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -44,5 +45,11 @@ app.include_router(analysis.router, prefix="/api", tags=["analysis"])
 
 
 @app.get("/health", tags=["health"])
-def health_check() -> dict:
-    return {"status": "ok"}
+async def health_check() -> dict:
+    index = await storage.load()
+    return {
+        "status": "ok",
+        "storage": "blob" if settings.use_blob_storage else "local",
+        "faces": len(index.names),
+        "threshold": settings.match_threshold,
+    }

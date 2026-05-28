@@ -5,108 +5,117 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 ---
 
 <Base title="Register">
-  <h1 class="page-title">Register a Face</h1>
-  <p class="page-subtitle">
-    Add someone to the database. Upload a clear, well-lit photo and give it a name.
-    If that name already exists, this overwrites it.
-  </p>
-
-  <div class="two-col" style="align-items: start;">
-
-    <!-- left: form -->
+  <header class="page-head">
     <div>
-      <div class="card">
+      <p class="eyebrow">Register</p>
+      <h1>Add one face.</h1>
+      <p class="page-subtitle">
+        Give the database one clear photo and a name. Existing names get replaced, so use the spelling you want.
+      </p>
+    </div>
+    <aside class="hero-note desktop-only">
+      <strong>Name matters</strong>
+      <p>The delete button removes the saved embedding for that exact name.</p>
+    </aside>
+  </header>
+
+  <div class="workbench">
+    <section class="flow">
+      <div class="panel">
         <div class="field">
           <label for="name-input">Name</label>
-          <input type="text" id="name-input" placeholder="e.g. Thavanish" autocomplete="off" />
+          <input type="text" id="name-input" placeholder="Thavanish" autocomplete="off" />
         </div>
 
         <div class="field">
-          <label>Photo</label>
+          <label for="file-input">Photo</label>
           <div class="upload-zone" id="upload-zone">
             <input type="file" id="file-input" accept="image/*" />
-            <div class="upload-icon">📷</div>
-            <p class="upload-hint">Click or drop an image here</p>
+            <div class="upload-copy">
+              <span class="upload-icon">
+                <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+              </span>
+              <p class="upload-hint">Drop a clear face photo here</p>
+            </div>
           </div>
-          <img id="preview" class="preview-img" alt="Preview" />
+          <img id="preview" class="preview-img" alt="Selected face preview" />
         </div>
 
-        <button class="btn" id="submit-btn" disabled>Register face</button>
+        <button class="btn" id="submit-btn" disabled>Save this face</button>
       </div>
 
       <div class="result" id="result">
         <div class="result-title" id="result-title"></div>
         <div class="result-meta" id="result-meta"></div>
       </div>
-    </div>
+    </section>
 
-    <!-- right: current database -->
-    <div class="card">
-      <h3>Registered faces</h3>
+    <aside class="panel panel-muted">
+      <h3>Saved faces</h3>
       <ul class="face-list" id="face-list">
-        <li class="empty">Loading...</li>
+        <li class="empty">Checking the list.</li>
       </ul>
-    </div>
-
+    </aside>
   </div>
 </Base>
 
 <script define:vars={{ apiUrl }}>
-  const nameInput   = document.getElementById('name-input');
-  const fileInput   = document.getElementById('file-input');
-  const uploadZone  = document.getElementById('upload-zone');
-  const preview     = document.getElementById('preview');
-  const submitBtn   = document.getElementById('submit-btn');
-  const result      = document.getElementById('result');
+  const nameInput = document.getElementById('name-input');
+  const fileInput = document.getElementById('file-input');
+  const uploadZone = document.getElementById('upload-zone');
+  const preview = document.getElementById('preview');
+  const submitBtn = document.getElementById('submit-btn');
+  const result = document.getElementById('result');
   const resultTitle = document.getElementById('result-title');
-  const resultMeta  = document.getElementById('result-meta');
-  const faceList    = document.getElementById('face-list');
+  const resultMeta = document.getElementById('result-meta');
+  const faceList = document.getElementById('face-list');
 
-  // ── enable submit only when both fields are filled ────────────────────
   function checkReady() {
     submitBtn.disabled = !nameInput.value.trim() || !fileInput.files?.length;
+  }
+
+  function showPreview(file) {
+    preview.src = URL.createObjectURL(file);
+    preview.classList.add('visible');
+    checkReady();
   }
 
   nameInput.addEventListener('input', checkReady);
 
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0];
-    if (!file) return;
-    preview.src = URL.createObjectURL(file);
-    preview.classList.add('visible');
-    checkReady();
+    if (file) showPreview(file);
   });
 
-  // ── drag and drop ──────────────────────────────────────────────────────
-  uploadZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
+  uploadZone.addEventListener('dragover', (event) => {
+    event.preventDefault();
     uploadZone.classList.add('dragover');
   });
 
   uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
 
-  uploadZone.addEventListener('drop', (e) => {
-    e.preventDefault();
+  uploadZone.addEventListener('drop', (event) => {
+    event.preventDefault();
     uploadZone.classList.remove('dragover');
-    const file = e.dataTransfer?.files?.[0];
+    const file = event.dataTransfer?.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      fileInput.files = dt.files;
-      preview.src = URL.createObjectURL(file);
-      preview.classList.add('visible');
-      checkReady();
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileInput.files = transfer.files;
+      showPreview(file);
     }
   });
 
-  // ── submit ─────────────────────────────────────────────────────────────
   submitBtn.addEventListener('click', async () => {
     const name = nameInput.value.trim();
     const file = fileInput.files?.[0];
     if (!name || !file) return;
 
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Registering...';
+    submitBtn.textContent = 'Saving';
     result.className = 'result';
 
     const body = new FormData();
@@ -114,41 +123,40 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
     body.append('image', file);
 
     try {
-      const res  = await fetch(`${apiUrl}/api/faces/register`, { method: 'POST', body });
+      const res = await fetch(`${apiUrl}/api/faces/register`, { method: 'POST', body });
       const data = await res.json();
 
       if (res.ok) {
         result.classList.add('visible', 'match');
-        resultTitle.textContent = `✓ ${data.message}`;
-        resultMeta.textContent  = '';
+        resultTitle.textContent = data.message || 'Saved';
+        resultMeta.textContent = `${name} is ready for identify.`;
         nameInput.value = '';
         fileInput.value = '';
         preview.classList.remove('visible');
         await loadFaces();
       } else {
         result.classList.add('visible', 'no-match');
-        resultTitle.textContent = '✗ Registration failed';
-        resultMeta.textContent  = data.detail ?? 'Unknown error';
+        resultTitle.textContent = 'Could not save';
+        resultMeta.textContent = data.detail ?? 'The backend did not explain why.';
       }
     } catch {
       result.classList.add('visible', 'no-match');
-      resultTitle.textContent = '✗ Could not reach the backend';
-      resultMeta.textContent  = `Check that ${apiUrl} is running`;
+      resultTitle.textContent = 'Backend is quiet';
+      resultMeta.textContent = `Start the API at ${apiUrl}.`;
     }
 
     submitBtn.disabled = false;
-    submitBtn.textContent = 'Register face';
+    submitBtn.textContent = 'Save this face';
     checkReady();
   });
 
-  // ── face list ──────────────────────────────────────────────────────────
   async function loadFaces() {
     try {
-      const res  = await fetch(`${apiUrl}/api/faces/`);
+      const res = await fetch(`${apiUrl}/api/faces/`);
       const data = await res.json();
       renderFaces(data.faces);
     } catch {
-      faceList.innerHTML = '<li class="empty">Could not load — is the backend running?</li>';
+      faceList.innerHTML = '<li class="empty">The list did not answer.</li>';
     }
   }
 
@@ -159,18 +167,24 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 
   function renderFaces(faces) {
     if (!faces.length) {
-      faceList.innerHTML = '<li class="empty">No faces registered yet.</li>';
+      faceList.innerHTML = '<li class="empty">No saved faces yet.</li>';
       return;
     }
-    faceList.innerHTML = faces.map(name => `
-      <li>
-        <span>${name}</span>
-        <button class="btn btn-sm" data-name="${name}">Remove</button>
-      </li>
-    `).join('');
 
-    faceList.querySelectorAll('[data-name]').forEach(btn => {
-      btn.addEventListener('click', () => deleteFace(btn.dataset.name));
+    faceList.replaceChildren();
+    faces.forEach((name) => {
+      const item = document.createElement('li');
+      const label = document.createElement('span');
+      const button = document.createElement('button');
+
+      label.textContent = name;
+      button.type = 'button';
+      button.className = 'btn btn-sm';
+      button.textContent = 'Remove';
+      button.addEventListener('click', () => deleteFace(name));
+
+      item.append(label, button);
+      faceList.append(item);
     });
   }
 

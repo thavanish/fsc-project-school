@@ -8,6 +8,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:4321,http://localhost:3000,https://d593d53c.fsc-project-school.pages.dev"
     match_threshold: float = 0.55
+    ambiguity_margin: float = 0.035
+    max_upload_bytes: int = 4_300_000
+    image_max_side: int = 960
+    detection_upsample: int = 1
+    register_jitters: int = 2
+    query_jitters: int = 1
+    face_model: str = "small"
+    storage_backend: str = "auto"
+    storage_file: str = "data/faces.json"
+    blob_path: str = "face-db/faces.json"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
@@ -37,6 +47,17 @@ class Settings(BaseSettings):
     @property
     def allowed_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
+    @property
+    def use_blob_storage(self) -> bool:
+        import os
+
+        backend = self.storage_backend.strip().lower()
+        if backend == "blob":
+            return True
+        if backend == "local":
+            return False
+        return bool(os.getenv("VERCEL") and os.getenv("BLOB_READ_WRITE_TOKEN"))
 
 
 @lru_cache
