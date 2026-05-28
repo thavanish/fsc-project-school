@@ -11,21 +11,22 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Vercel deploy
+## Render deploy
 
-Create the Vercel project with `backend` as the project root. Vercel will use:
+The repo root includes `render.yaml` for a Render Blueprint. It creates a Python web service with `backend` as the root directory. The Blueprint uses Render's `starter` plan because saved face registrations need a persistent disk.
 
-- `app/main.py` as the FastAPI entrypoint
-- `requirements.txt` for Python dependencies
+Manual Render settings:
 
-For persistent registrations on Vercel, create a Vercel Blob store and connect it to the project. Vercel will provide `BLOB_READ_WRITE_TOKEN`. Without that token, serverless storage falls back to local files, which are not durable on Vercel.
+- Root directory: `backend`
+- Build command: `pip install -r requirements.txt`
+- Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
 Recommended environment variables:
 
 ```bash
-ALLOWED_ORIGINS=https://your-frontend-domain.vercel.app,http://localhost:4321
-STORAGE_BACKEND=auto
-BLOB_READ_WRITE_TOKEN=your-vercel-blob-token
+ALLOWED_ORIGINS=https://face.thavanish.dedyn.io,http://localhost:4321
+STORAGE_BACKEND=local
+STORAGE_FILE=/var/data/faces.json
 MATCH_THRESHOLD=0.55
 AMBIGUITY_MARGIN=0.035
 MAX_UPLOAD_BYTES=4300000
@@ -34,6 +35,8 @@ REGISTER_JITTERS=2
 QUERY_JITTERS=1
 ```
 
+For persistent registrations, attach a Render disk at `/var/data`. The included Blueprint does this with a 1 GB disk. If you must use a free web service, remove the disk and expect local registrations to disappear after restarts.
+
 ## Free plan notes
 
-Vercel Functions accept request bodies up to 4.5 MB, so the backend rejects images over 4.3 MB before running the model. The model uses HOG detection, resized input images, and one vectorized NumPy comparison pass for identify.
+Free web services can take a moment to wake after inactivity. The frontend waits for `GET /health` before it lets the user register, identify, or verify faces. The backend rejects images over 4.3 MB before running the model. The model uses HOG detection, resized input images, and one vectorized NumPy comparison pass for identify.

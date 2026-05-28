@@ -76,6 +76,14 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const faceList = document.getElementById('face-list');
   const faceCount = document.getElementById('face-count');
 
+  function apiBase() {
+    return window.faceLabBackend?.apiUrl ?? apiUrl.replace(/\/$/, '');
+  }
+
+  async function waitForBackend() {
+    await window.faceLabBackend?.ready;
+  }
+
   function showPreview(file) {
     preview.src = URL.createObjectURL(file);
     preview.classList.add('visible');
@@ -120,7 +128,8 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
     body.append('image', file);
 
     try {
-      const res = await fetch(`${apiUrl}/api/identify`, { method: 'POST', body });
+      await waitForBackend();
+      const res = await fetch(`${apiBase()}/api/identify`, { method: 'POST', body });
       const data = await res.json();
 
       if (!res.ok) {
@@ -150,7 +159,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
     } catch {
       result.classList.add('visible', 'no-match');
       resultTitle.textContent = 'Backend is quiet';
-      resultMeta.textContent = `Start the API at ${apiUrl}.`;
+      resultMeta.textContent = `Start the API at ${apiBase()}.`;
     }
 
     identifyBtn.disabled = false;
@@ -158,8 +167,9 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   });
 
   async function loadFaces() {
+    await waitForBackend();
     try {
-      const res = await fetch(`${apiUrl}/api/faces/`);
+      const res = await fetch(`${apiBase()}/api/faces/`);
       const data = await res.json();
       faceCount.textContent = data.count;
       if (!data.faces.length) {

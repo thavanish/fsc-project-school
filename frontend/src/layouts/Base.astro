@@ -13,6 +13,7 @@ const {
 } = Astro.props;
 
 const currentPath = Astro.url.pathname;
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 ---
 
 <!DOCTYPE html>
@@ -28,6 +29,87 @@ const currentPath = Astro.url.pathname;
   </script>
 </head>
 <body>
+  <div class="backend-gate" id="backend-gate" role="status" aria-live="polite" aria-busy="true">
+    <div class="backend-gate-panel">
+      <div class="backend-gate-topline">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="backend-gate-state">Starting backend</span>
+      </div>
+      <h2>Waiting for the Face Lab API.</h2>
+      <p id="backend-gate-copy">
+        The app will unlock after the backend answers its health check.
+      </p>
+      <div class="backend-gate-meter" aria-hidden="true">
+        <span></span>
+      </div>
+      <button class="btn btn-secondary btn-fit" id="backend-gate-retry" type="button" hidden>Check again</button>
+    </div>
+  </div>
+  <script define:vars={{ apiUrl }}>
+    (() => {
+      const gate = document.getElementById('backend-gate');
+      const state = document.getElementById('backend-gate-state');
+      const copy = document.getElementById('backend-gate-copy');
+      const retry = document.getElementById('backend-gate-retry');
+      const healthUrl = `${apiUrl.replace(/\/$/, '')}/health`;
+      const timeoutMs = 4500;
+      const retryMs = 2500;
+      let attempts = 0;
+      let retryTimer = 0;
+      let readyResolve;
+
+      const ready = new Promise((resolve) => {
+        readyResolve = resolve;
+      });
+
+      window.faceLabBackend = {
+        apiUrl: apiUrl.replace(/\/$/, ''),
+        ready,
+        isReady: false,
+      };
+
+      async function pingBackend() {
+        window.clearTimeout(retryTimer);
+        attempts += 1;
+        retry.hidden = true;
+        state.textContent = attempts === 1 ? 'Starting backend' : `Checking backend, try ${attempts}`;
+        copy.textContent = 'The health check is warming the API before any face data is sent.';
+
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+          const response = await fetch(healthUrl, {
+            cache: 'no-store',
+            signal: controller.signal,
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || data.status !== 'ok') {
+            throw new Error('Health check did not return ok.');
+          }
+
+          window.faceLabBackend.isReady = true;
+          gate.classList.add('ready');
+          gate.setAttribute('aria-busy', 'false');
+          state.textContent = 'Backend ready';
+          copy.textContent = 'Face registration and matching are available.';
+          readyResolve(data);
+          window.dispatchEvent(new CustomEvent('face-lab:backend-ready', { detail: data }));
+          window.setTimeout(() => gate.remove(), 260);
+        } catch {
+          state.textContent = 'Backend is still waking';
+          copy.textContent = `Waiting on ${healthUrl}. The app will keep checking automatically.`;
+          if (attempts >= 4) retry.hidden = false;
+          retryTimer = window.setTimeout(pingBackend, retryMs);
+        } finally {
+          window.clearTimeout(timeout);
+        }
+      }
+
+      retry.addEventListener('click', pingBackend);
+      pingBackend();
+    })();
+  </script>
   <Nav currentPath={currentPath} />
   <main class="app-main">
     <slot />

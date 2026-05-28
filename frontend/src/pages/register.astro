@@ -123,6 +123,14 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   let detectorModel = null;
   const samples = [];
 
+  function apiBase() {
+    return window.faceLabBackend?.apiUrl ?? apiUrl.replace(/\/$/, '');
+  }
+
+  async function waitForBackend() {
+    await window.faceLabBackend?.ready;
+  }
+
   function setResult(type, title, message) {
     result.className = `result visible ${type}`;
     resultTitle.textContent = title;
@@ -265,7 +273,8 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
     const scanBody = new FormData();
     scanBody.append('image', sample.file);
     try {
-      const faceRes = await fetch(`${apiUrl}/api/identify`, { method: 'POST', body: scanBody });
+      await waitForBackend();
+      const faceRes = await fetch(`${apiBase()}/api/identify`, { method: 'POST', body: scanBody });
       const faceData = await faceRes.json();
       if (faceRes.ok) {
         rows.push({ label: 'Faces detected', value: String(faceData.faces_detected ?? 0) });
@@ -335,12 +344,13 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
       body.append('image', sample.file);
 
       try {
-        const res = await fetch(`${apiUrl}/api/faces/register`, { method: 'POST', body });
+        await waitForBackend();
+        const res = await fetch(`${apiBase()}/api/faces/register`, { method: 'POST', body });
         const data = await res.json();
         if (res.ok) saved += 1;
         else lastError = data.detail ?? 'The backend did not explain why.';
       } catch {
-        lastError = `Start the API at ${apiUrl}.`;
+        lastError = `Start the API at ${apiBase()}.`;
       }
     }
 
@@ -356,8 +366,9 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   });
 
   async function loadFaces() {
+    await waitForBackend();
     try {
-      const res = await fetch(`${apiUrl}/api/faces/`);
+      const res = await fetch(`${apiBase()}/api/faces/`);
       const data = await res.json();
       renderFaces(data.faces || []);
     } catch {
@@ -366,7 +377,8 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   }
 
   async function deleteFace(name) {
-    await fetch(`${apiUrl}/api/faces/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    await waitForBackend();
+    await fetch(`${apiBase()}/api/faces/${encodeURIComponent(name)}`, { method: 'DELETE' });
     await loadFaces();
   }
 

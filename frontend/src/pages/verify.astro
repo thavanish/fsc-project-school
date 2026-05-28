@@ -94,6 +94,14 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const confBar = document.getElementById('conf-bar');
   const confFill = document.getElementById('conf-fill');
 
+  function apiBase() {
+    return window.faceLabBackend?.apiUrl ?? apiUrl.replace(/\/$/, '');
+  }
+
+  async function waitForBackend() {
+    await window.faceLabBackend?.ready;
+  }
+
   function checkReady() {
     verifyBtn.disabled = !(file1Input.files?.length && file2Input.files?.length);
   }
@@ -148,7 +156,8 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
     body.append('image2', second);
 
     try {
-      const res = await fetch(`${apiUrl}/api/verify`, { method: 'POST', body });
+      await waitForBackend();
+      const res = await fetch(`${apiBase()}/api/verify`, { method: 'POST', body });
       const data = await res.json();
 
       if (!res.ok) {
@@ -177,7 +186,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
     } catch {
       result.classList.add('visible', 'no-match');
       resultTitle.textContent = 'Backend is quiet';
-      resultMeta.textContent = `Start the API at ${apiUrl}.`;
+      resultMeta.textContent = `Start the API at ${apiBase()}.`;
     }
 
     verifyBtn.disabled = false;

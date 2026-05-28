@@ -2,7 +2,7 @@
 
 Capstone project by Thavanish B, XII B1, Maharishi Vidya Mandir, 2025 to 2026.
 
-The backend turns faces into 128-dimensional embeddings with `face_recognition` and compares them with a vectorized NumPy distance pass. The frontend is Astro. The backend is FastAPI on Vercel.
+The backend turns faces into 128-dimensional embeddings with `face_recognition` and compares them with a vectorized NumPy distance pass. The frontend is Astro. The backend is FastAPI and is intended to run as a Render web service.
 
 ## Features
 
@@ -14,6 +14,7 @@ The backend turns faces into 128-dimensional embeddings with `face_recognition` 
 
 ```text
 facial-recognition-capstone/
+  render.yaml                 # Render backend Blueprint
   backend/
     api/index.py              # Vercel Python entrypoint
     app/
@@ -29,7 +30,6 @@ facial-recognition-capstone/
         analysis.py           # identify, verify
     data/                     # local faces.json, git ignored
     requirements.txt
-    vercel.json
   frontend/
     src/
       layouts/Base.astro
@@ -64,26 +64,33 @@ Set `PUBLIC_API_URL=http://localhost:8000` in `frontend/.env` for local backend 
 
 ## Deploying
 
-### Backend on Vercel
+### Backend on Render
 
-1. Create a Vercel project with `backend` as the root directory.
-2. Create a Vercel Blob store and connect it to the project if you want registered faces to persist.
-3. Add environment variables:
+The repo includes `render.yaml` for a Render Blueprint. It deploys `backend/` as a Python web service on the `starter` plan because saved face registrations need a persistent disk. It runs:
 
 ```bash
-ALLOWED_ORIGINS=https://your-frontend-domain.vercel.app,http://localhost:4321
-STORAGE_BACKEND=auto
-BLOB_READ_WRITE_TOKEN=your-vercel-blob-token
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Create a Render Blueprint from this repository, then confirm these environment variables:
+
+```bash
+ALLOWED_ORIGINS=https://face.thavanish.dedyn.io,http://localhost:4321
+STORAGE_BACKEND=local
+STORAGE_FILE=/var/data/faces.json
 MATCH_THRESHOLD=0.55
 AMBIGUITY_MARGIN=0.035
 MAX_UPLOAD_BYTES=4300000
+IMAGE_MAX_SIDE=960
+REGISTER_JITTERS=2
+QUERY_JITTERS=1
 ```
 
-`api/index.py` exposes the FastAPI app to Vercel. `vercel.json` routes all backend requests to that function and keeps the max duration at 60 seconds for the free plan.
+The Blueprint attaches a small disk at `/var/data` so saved registrations can survive deploys. If you create the service manually instead, use `backend` as the root directory, `pip install -r requirements.txt` as the build command, and the `uvicorn` command above as the start command. If you must use Render's free service, remove the `disk` block and accept that local face data can disappear on restarts.
 
 ### Frontend
 
-Deploy the frontend separately and set `PUBLIC_API_URL` to the Vercel backend URL.
+Deploy the frontend separately and set `PUBLIC_API_URL` to the Render backend URL. The frontend waits on `GET /health` before enabling registration, identification, or verification.
 
 ## API reference
 
