@@ -1,35 +1,42 @@
 from functools import lru_cache
-from typing import Any, Union
+from typing import Any
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # Change the type alignment to accept a Union of list or raw str on input
-    allowed_origins: Union[list[str], str] = ["http://localhost:4321", "http://localhost:3000"]
-
-    # face match threshold. the face_recognition library recommends 0.6 as a safe
-    # default, but 0.55 reduces false positives without dropping real matches much.
+    allowed_origins: str = "http://localhost:4321,http://localhost:3000,https://d593d53c.fsc-project-school.pages.dev"
     match_threshold: float = 0.55
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
-    def parse_origins(cls, v: Any) -> list[str]:
+    def parse_origins(cls, v: Any) -> str:
+        if isinstance(v, list):
+            return ",".join(str(item).strip() for item in v if str(item).strip())
+
         if isinstance(v, str):
-            # Check if it looks like a JSON array, try parsing it safely
-            if v.startswith("[") and v.endswith("]"):
+            value = v.strip()
+
+            if value.startswith("[") and value.endswith("]"):
                 import json
+
                 try:
-                    return json.loads(v)
+                    parsed = json.loads(value)
+                    if isinstance(parsed, list):
+                        return ",".join(str(item).strip() for item in parsed if str(item).strip())
                 except json.JSONDecodeError:
                     pass
-            
-            # If it's a comma-separated string, split it and clean it up
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        
-        return v
+
+            return value
+
+        return "http://localhost:4321,http://localhost:3000,https://d593d53c.fsc-project-school.pages.dev"
+
+    @property
+    def allowed_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
 
 
 @lru_cache
