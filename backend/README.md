@@ -25,8 +25,9 @@ Recommended environment variables:
 
 ```bash
 ALLOWED_ORIGINS=https://face.thavanish.dedyn.io,http://localhost:4321
-STORAGE_BACKEND=local
-STORAGE_FILE=data/faces.json
+STORAGE_BACKEND=blob
+BLOB_PATH=face-db/faces.json
+BLOB_READ_WRITE_TOKEN=your-vercel-blob-read-write-token
 MATCH_THRESHOLD=0.55
 AMBIGUITY_MARGIN=0.035
 MAX_UPLOAD_BYTES=4300000
@@ -35,9 +36,18 @@ REGISTER_JITTERS=2
 QUERY_JITTERS=1
 ```
 
-Free Render web services do not provide durable local file storage, so saved registrations can disappear after restarts or redeploys. For a school demo this is usually fine. For a real persistent database, use a paid disk or an external storage service.
+Free Render web services do not provide durable local file storage, so saved registrations are stored in Vercel Blob. Add `BLOB_READ_WRITE_TOKEN` manually in Render because the token is secret and is not stored in `render.yaml`.
 
 `requirements-render.txt` skips `dlib` and `face_recognition` so Render free does not run out of memory during build. The app will use its lightweight fallback embedding on Render. Use `requirements.txt` for local development or a larger server that can install the native face recognition stack.
+
+## Vercel Blob setup
+
+1. In Vercel, open the project you want to use for storage.
+2. Go to Storage and create a Blob database with Private access.
+3. Open the Blob store settings and copy the read-write token.
+4. In Render, add the token as `BLOB_READ_WRITE_TOKEN`.
+5. Keep `STORAGE_BACKEND=blob` and `BLOB_PATH=face-db/faces.json`.
+6. Redeploy Render.
 
 ## Free plan notes
 

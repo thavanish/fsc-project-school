@@ -66,6 +66,10 @@ def _local_path() -> Path:
 
 async def _read_blob() -> dict[str, Any] | None:
     settings = get_settings()
+    if not settings.blob_read_write_token:
+        logger.error("BLOB_READ_WRITE_TOKEN is required when using Vercel Blob storage")
+        return None
+
     try:
         from vercel.blob import AsyncBlobClient
     except Exception as exc:
@@ -74,7 +78,11 @@ async def _read_blob() -> dict[str, Any] | None:
 
     try:
         client = AsyncBlobClient()
-        result = await client.get(settings.blob_path, access="private")
+        result = await client.get(
+            settings.blob_path,
+            access="private",
+            token=settings.blob_read_write_token,
+        )
         if result is None or result.status_code != 200 or result.stream is None:
             return _empty_payload()
 
@@ -89,6 +97,10 @@ async def _read_blob() -> dict[str, Any] | None:
 
 async def _write_blob(payload: dict[str, Any]) -> bool:
     settings = get_settings()
+    if not settings.blob_read_write_token:
+        logger.error("BLOB_READ_WRITE_TOKEN is required when using Vercel Blob storage")
+        return False
+
     try:
         from vercel.blob import AsyncBlobClient
     except Exception as exc:
@@ -105,6 +117,7 @@ async def _write_blob(payload: dict[str, Any]) -> bool:
             add_random_suffix=False,
             overwrite=True,
             cache_control_max_age=0,
+            token=settings.blob_read_write_token,
         )
         return True
     except Exception:
@@ -136,6 +149,8 @@ async def load() -> FaceIndex:
         payload = await _read_blob()
         if payload is not None:
             return _payload_to_index(payload)
+        if settings.require_blob_storage:
+            raise RuntimeError("Blob storage is configured but the face index could not be read")
         logger.warning("Falling back to local storage after Blob read failure")
 
     return _payload_to_index(_read_local())
@@ -146,6 +161,8 @@ async def _save(index: FaceIndex) -> None:
     payload = _index_to_payload(index)
     if settings.use_blob_storage and await _write_blob(payload):
         return
+    if settings.require_blob_storage:
+        raise RuntimeError("Blob storage is configured but the face index could not be written")
     _write_local(payload)
 
 

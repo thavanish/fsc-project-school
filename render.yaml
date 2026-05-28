@@ -12,9 +12,11 @@ services:
       - key: ALLOWED_ORIGINS
         value: https://face.thavanish.dedyn.io,http://localhost:4321
       - key: STORAGE_BACKEND
-        value: local
-      - key: STORAGE_FILE
-        value: data/faces.json
+        value: blob
+      - key: BLOB_PATH
+        value: face-db/faces.json
+      - key: BLOB_READ_WRITE_TOKEN
+        sync: false
       - key: MATCH_THRESHOLD
         value: "0.55"
       - key: AMBIGUITY_MARGIN

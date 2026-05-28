@@ -77,8 +77,9 @@ Create a Render Blueprint from this repository, then confirm these environment v
 
 ```bash
 ALLOWED_ORIGINS=https://face.thavanish.dedyn.io,http://localhost:4321
-STORAGE_BACKEND=local
-STORAGE_FILE=data/faces.json
+STORAGE_BACKEND=blob
+BLOB_PATH=face-db/faces.json
+BLOB_READ_WRITE_TOKEN=your-vercel-blob-read-write-token
 MATCH_THRESHOLD=0.55
 AMBIGUITY_MARGIN=0.035
 MAX_UPLOAD_BYTES=4300000
@@ -87,9 +88,17 @@ REGISTER_JITTERS=2
 QUERY_JITTERS=1
 ```
 
-Free Render web services do not provide durable local file storage, so saved face registrations can disappear after restarts or redeploys. That is acceptable for a school demo, but not for a real face database. If you create the service manually instead, use `backend` as the root directory, `pip install -r requirements-render.txt` as the build command, and the `uvicorn` command above as the start command.
+Free Render web services do not provide durable local file storage, so this deployment stores the face index in Vercel Blob instead. If you create the service manually, use `backend` as the root directory, `pip install -r requirements-render.txt` as the build command, and the `uvicorn` command above as the start command. Add `BLOB_READ_WRITE_TOKEN` manually in Render because `render.yaml` cannot contain the secret value.
 
 `requirements-render.txt` skips `dlib` and `face_recognition` so the free Render build does not run out of memory. The backend stays online with its lightweight fallback embedding. For local development or a paid server with more build memory, use `requirements.txt` to install the real face recognition stack.
+
+### Vercel Blob storage
+
+1. In Vercel, open the project that owns the Blob store.
+2. Go to Storage, create a Blob database, and choose Private access.
+3. Open the Blob store settings and copy the read-write token.
+4. In Render, set `BLOB_READ_WRITE_TOKEN` to that token and keep `STORAGE_BACKEND=blob`.
+5. Redeploy Render, then register a face and restart the service. The saved name should still appear because `face-db/faces.json` is loaded from Blob.
 
 ### Frontend
 

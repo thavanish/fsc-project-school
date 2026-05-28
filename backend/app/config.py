@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     storage_backend: str = "auto"
     storage_file: str = "data/faces.json"
     blob_path: str = "face-db/faces.json"
+    blob_read_write_token: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
@@ -61,14 +62,16 @@ class Settings(BaseSettings):
 
     @property
     def use_blob_storage(self) -> bool:
-        import os
-
         backend = self.storage_backend.strip().lower()
         if backend == "blob":
             return True
         if backend == "local":
             return False
-        return bool(os.getenv("VERCEL") and os.getenv("BLOB_READ_WRITE_TOKEN"))
+        return bool(self.blob_read_write_token)
+
+    @property
+    def require_blob_storage(self) -> bool:
+        return self.storage_backend.strip().lower() == "blob"
 
 
 @lru_cache
