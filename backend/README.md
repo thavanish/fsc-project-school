@@ -18,7 +18,7 @@ The repo root includes `render.yaml` for a Render Blueprint. It creates a free P
 Manual Render settings:
 
 - Root directory: `backend`
-- Build command: `pip install -r requirements.txt`
+- Build command: `pip install -r requirements-render.txt`
 - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
 Recommended environment variables:
@@ -36,6 +36,8 @@ QUERY_JITTERS=1
 ```
 
 Free Render web services do not provide durable local file storage, so saved registrations can disappear after restarts or redeploys. For a school demo this is usually fine. For a real persistent database, use a paid disk or an external storage service.
+
+`requirements-render.txt` skips `dlib` and `face_recognition` so Render free does not run out of memory during build. The app will use its lightweight fallback embedding on Render. Use `requirements.txt` for local development or a larger server that can install the native face recognition stack.
 
 ## Free plan notes
 

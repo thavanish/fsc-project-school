@@ -30,6 +30,7 @@ facial-recognition-capstone/
         analysis.py           # identify, verify
     data/                     # local faces.json, git ignored
     requirements.txt
+    requirements-render.txt   # lightweight Render free-tier install
   frontend/
     src/
       layouts/Base.astro
@@ -86,7 +87,9 @@ REGISTER_JITTERS=2
 QUERY_JITTERS=1
 ```
 
-Free Render web services do not provide durable local file storage, so saved face registrations can disappear after restarts or redeploys. That is acceptable for a school demo, but not for a real face database. If you create the service manually instead, use `backend` as the root directory, `pip install -r requirements.txt` as the build command, and the `uvicorn` command above as the start command.
+Free Render web services do not provide durable local file storage, so saved face registrations can disappear after restarts or redeploys. That is acceptable for a school demo, but not for a real face database. If you create the service manually instead, use `backend` as the root directory, `pip install -r requirements-render.txt` as the build command, and the `uvicorn` command above as the start command.
+
+`requirements-render.txt` skips `dlib` and `face_recognition` so the free Render build does not run out of memory. The backend stays online with its lightweight fallback embedding. For local development or a paid server with more build memory, use `requirements.txt` to install the real face recognition stack.
 
 ### Frontend
 
