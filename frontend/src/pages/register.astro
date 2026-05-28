@@ -5,32 +5,47 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
 ---
 
 <Base title="Register">
-  <header class="page-head">
+  <header class="page-head reveal">
     <div>
       <p class="eyebrow">Register</p>
-      <h1>Add one face.</h1>
+      <h1>Build a small face dataset.</h1>
       <p class="page-subtitle">
-        Give the database one clear photo and a name. Existing names get replaced, so use the spelling you want.
+        Use the camera to take several samples, run a quick frame analysis, then save the selected photos
+        into the recognition database.
       </p>
     </div>
     <aside class="hero-note desktop-only">
-      <strong>Name matters</strong>
-      <p>The delete button removes the saved embedding for that exact name.</p>
+      <strong>Camera first</strong>
+      <p>Captured samples are saved as numbered names, so one person can have multiple database entries.</p>
     </aside>
   </header>
 
-  <div class="workbench">
+  <div class="register-grid reveal">
     <section class="flow">
-      <div class="panel">
-        <div class="field">
-          <label for="name-input">Name</label>
+      <div class="panel camera-panel">
+        <div class="field compact-field">
+          <label for="name-input">Person name</label>
           <input type="text" id="name-input" placeholder="Thavanish" autocomplete="off" />
         </div>
 
+        <div class="camera-stage" id="camera-stage">
+          <video id="camera-feed" autoplay muted playsinline></video>
+          <canvas id="camera-canvas"></canvas>
+          <div class="camera-empty" id="camera-empty">
+            <strong>Camera is off</strong>
+            <span>Start the camera or upload photos below.</span>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <button class="btn btn-secondary" id="camera-btn" type="button">Start camera</button>
+          <button class="btn" id="capture-btn" type="button" disabled>Take photo</button>
+        </div>
+
         <div class="field">
-          <label for="file-input">Photo</label>
-          <div class="upload-zone" id="upload-zone">
-            <input type="file" id="file-input" accept="image/*" />
+          <label for="file-input">Add image files</label>
+          <div class="upload-zone compact-upload" id="upload-zone">
+            <input type="file" id="file-input" accept="image/*" multiple />
             <div class="upload-copy">
               <span class="upload-icon">
                 <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
@@ -38,13 +53,25 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
                   <circle cx="12" cy="13" r="4"></circle>
                 </svg>
               </span>
-              <p class="upload-hint">Drop a clear face photo here</p>
+              <p class="upload-hint">Drop or choose multiple face photos</p>
             </div>
           </div>
-          <img id="preview" class="preview-img" alt="Selected face preview" />
         </div>
+      </div>
 
-        <button class="btn" id="submit-btn" disabled>Save this face</button>
+      <div class="panel">
+        <div class="section-title-row">
+          <div>
+            <h2>Captured samples</h2>
+            <p id="sample-count">No samples yet.</p>
+          </div>
+          <button class="btn btn-secondary btn-fit" id="clear-btn" type="button" disabled>Clear</button>
+        </div>
+        <div class="sample-grid" id="sample-grid"></div>
+        <div class="control-row">
+          <button class="btn btn-secondary" id="analyze-btn" type="button" disabled>Analyze selected</button>
+          <button class="btn" id="submit-btn" type="button" disabled>Save selected</button>
+        </div>
       </div>
 
       <div class="result" id="result">
@@ -53,11 +80,20 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
       </div>
     </section>
 
-    <aside class="panel panel-muted">
-      <h3>Saved faces</h3>
-      <ul class="face-list" id="face-list">
-        <li class="empty">Checking the list.</li>
-      </ul>
+    <aside class="side-stack">
+      <section class="panel panel-muted">
+        <h3>Object detection</h3>
+        <div class="analysis-box" id="object-output">
+          <p>Select a sample and run analysis.</p>
+        </div>
+      </section>
+
+      <section class="panel panel-muted">
+        <h3>Saved faces</h3>
+        <ul class="face-list" id="face-list">
+          <li class="empty">Checking the list.</li>
+        </ul>
+      </section>
     </aside>
   </div>
 </Base>
@@ -66,28 +102,136 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   const nameInput = document.getElementById('name-input');
   const fileInput = document.getElementById('file-input');
   const uploadZone = document.getElementById('upload-zone');
-  const preview = document.getElementById('preview');
+  const cameraBtn = document.getElementById('camera-btn');
+  const captureBtn = document.getElementById('capture-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const analyzeBtn = document.getElementById('analyze-btn');
   const submitBtn = document.getElementById('submit-btn');
+  const video = document.getElementById('camera-feed');
+  const canvas = document.getElementById('camera-canvas');
+  const cameraEmpty = document.getElementById('camera-empty');
+  const sampleGrid = document.getElementById('sample-grid');
+  const sampleCount = document.getElementById('sample-count');
   const result = document.getElementById('result');
   const resultTitle = document.getElementById('result-title');
   const resultMeta = document.getElementById('result-meta');
   const faceList = document.getElementById('face-list');
+  const objectOutput = document.getElementById('object-output');
 
-  function checkReady() {
-    submitBtn.disabled = !nameInput.value.trim() || !fileInput.files?.length;
+  let stream = null;
+  let selectedId = null;
+  let detectorModel = null;
+  const samples = [];
+
+  function setResult(type, title, message) {
+    result.className = `result visible ${type}`;
+    resultTitle.textContent = title;
+    resultMeta.textContent = message;
   }
 
-  function showPreview(file) {
-    preview.src = URL.createObjectURL(file);
-    preview.classList.add('visible');
-    checkReady();
+  function updateButtons() {
+    const hasSamples = samples.length > 0;
+    const hasSelection = samples.some((sample) => sample.id === selectedId);
+    clearBtn.disabled = !hasSamples;
+    analyzeBtn.disabled = !hasSelection;
+    submitBtn.disabled = !nameInput.value.trim() || !hasSamples;
+    sampleCount.textContent = hasSamples
+      ? `${samples.length} sample${samples.length === 1 ? '' : 's'} ready.`
+      : 'No samples yet.';
   }
 
-  nameInput.addEventListener('input', checkReady);
+  function renderSamples() {
+    sampleGrid.replaceChildren();
+    samples.forEach((sample, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `sample-card${sample.id === selectedId ? ' selected' : ''}`;
+      button.innerHTML = `<img src="${sample.url}" alt="Sample ${index + 1}"><span>Sample ${index + 1}</span>`;
+      button.addEventListener('click', () => {
+        selectedId = sample.id;
+        renderSamples();
+        updateButtons();
+      });
+      sampleGrid.append(button);
+    });
+    updateButtons();
+  }
+
+  function addFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const id = crypto.randomUUID();
+    const sample = { id, file, url: URL.createObjectURL(file) };
+    samples.push(sample);
+    selectedId = id;
+    renderSamples();
+  }
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.append(script);
+    });
+  }
+
+  async function getDetectorModel() {
+    if (detectorModel) return detectorModel;
+    objectOutput.innerHTML = '<p>Loading object detector.</p>';
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js');
+    detectorModel = await window.cocoSsd.load();
+    return detectorModel;
+  }
+
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      video.srcObject = stream;
+      cameraEmpty.classList.add('hidden');
+      cameraBtn.textContent = 'Stop camera';
+      captureBtn.disabled = false;
+    } catch {
+      setResult('no-match', 'Camera blocked', 'Allow camera access or use image upload.');
+    }
+  }
+
+  function stopCamera() {
+    stream?.getTracks().forEach((track) => track.stop());
+    stream = null;
+    video.srcObject = null;
+    cameraEmpty.classList.remove('hidden');
+    cameraBtn.textContent = 'Start camera';
+    captureBtn.disabled = true;
+  }
+
+  cameraBtn.addEventListener('click', () => {
+    if (stream) stopCamera();
+    else startCamera();
+  });
+
+  captureBtn.addEventListener('click', () => {
+    if (!stream || !video.videoWidth) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      addFile(new File([blob], `camera-sample-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+    }, 'image/jpeg', 0.92);
+  });
+
+  nameInput.addEventListener('input', updateButtons);
 
   fileInput.addEventListener('change', () => {
-    const file = fileInput.files?.[0];
-    if (file) showPreview(file);
+    Array.from(fileInput.files || []).forEach(addFile);
+    fileInput.value = '';
   });
 
   uploadZone.addEventListener('dragover', (event) => {
@@ -100,61 +244,122 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   uploadZone.addEventListener('drop', (event) => {
     event.preventDefault();
     uploadZone.classList.remove('dragover');
-    const file = event.dataTransfer?.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      const transfer = new DataTransfer();
-      transfer.items.add(file);
-      fileInput.files = transfer.files;
-      showPreview(file);
+    Array.from(event.dataTransfer?.files || []).forEach(addFile);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    samples.forEach((sample) => URL.revokeObjectURL(sample.url));
+    samples.length = 0;
+    selectedId = null;
+    objectOutput.innerHTML = '<p>Select a sample and run analysis.</p>';
+    renderSamples();
+  });
+
+  analyzeBtn.addEventListener('click', async () => {
+    const sample = samples.find((item) => item.id === selectedId);
+    if (!sample) return;
+
+    objectOutput.innerHTML = '<p>Analyzing selected sample.</p>';
+    const rows = [];
+
+    const scanBody = new FormData();
+    scanBody.append('image', sample.file);
+    try {
+      const faceRes = await fetch(`${apiUrl}/api/identify`, { method: 'POST', body: scanBody });
+      const faceData = await faceRes.json();
+      if (faceRes.ok) {
+        rows.push({ label: 'Faces detected', value: String(faceData.faces_detected ?? 0) });
+        rows.push({ label: 'Known match', value: faceData.matched ? faceData.name : 'No match' });
+      }
+    } catch {
+      rows.push({ label: 'Backend scan', value: 'Offline' });
+    }
+
+    try {
+      const image = new Image();
+      image.src = sample.url;
+      await image.decode();
+      const model = await getDetectorModel();
+      const predictions = await model.detect(image);
+      objectOutput.replaceChildren();
+      rows.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'analysis-row';
+        row.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+        objectOutput.append(row);
+      });
+      const objectTitle = document.createElement('h4');
+      objectTitle.textContent = 'Objects';
+      objectOutput.append(objectTitle);
+      if (!predictions.length) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No objects were detected in this frame.';
+        objectOutput.append(empty);
+        return;
+      }
+      predictions.slice(0, 6).forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'analysis-row';
+        row.innerHTML = `<span>${item.class}</span><strong>${Math.round(item.score * 100)}%</strong>`;
+        objectOutput.append(row);
+      });
+    } catch {
+      objectOutput.replaceChildren();
+      rows.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'analysis-row';
+        row.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+        objectOutput.append(row);
+      });
+      const note = document.createElement('p');
+      note.textContent = 'Object detection could not load. Check the internet connection, then try again.';
+      objectOutput.append(note);
     }
   });
 
   submitBtn.addEventListener('click', async () => {
     const name = nameInput.value.trim();
-    const file = fileInput.files?.[0];
-    if (!name || !file) return;
+    if (!name || !samples.length) return;
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Saving';
     result.className = 'result';
 
-    const body = new FormData();
-    body.append('name', name);
-    body.append('image', file);
+    let saved = 0;
+    let lastError = '';
 
-    try {
-      const res = await fetch(`${apiUrl}/api/faces/register`, { method: 'POST', body });
-      const data = await res.json();
+    for (const [index, sample] of samples.entries()) {
+      const body = new FormData();
+      const sampleName = samples.length === 1 ? name : `${name} ${String(index + 1).padStart(2, '0')}`;
+      body.append('name', sampleName);
+      body.append('image', sample.file);
 
-      if (res.ok) {
-        result.classList.add('visible', 'match');
-        resultTitle.textContent = data.message || 'Saved';
-        resultMeta.textContent = `${name} is ready for identify.`;
-        nameInput.value = '';
-        fileInput.value = '';
-        preview.classList.remove('visible');
-        await loadFaces();
-      } else {
-        result.classList.add('visible', 'no-match');
-        resultTitle.textContent = 'Could not save';
-        resultMeta.textContent = data.detail ?? 'The backend did not explain why.';
+      try {
+        const res = await fetch(`${apiUrl}/api/faces/register`, { method: 'POST', body });
+        const data = await res.json();
+        if (res.ok) saved += 1;
+        else lastError = data.detail ?? 'The backend did not explain why.';
+      } catch {
+        lastError = `Start the API at ${apiUrl}.`;
       }
-    } catch {
-      result.classList.add('visible', 'no-match');
-      resultTitle.textContent = 'Backend is quiet';
-      resultMeta.textContent = `Start the API at ${apiUrl}.`;
     }
 
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Save this face';
-    checkReady();
+    if (saved) {
+      setResult('match', 'Samples saved', `${saved} of ${samples.length} sample${samples.length === 1 ? '' : 's'} saved for ${name}.`);
+      await loadFaces();
+    } else {
+      setResult('no-match', 'Could not save', lastError || 'No samples were accepted.');
+    }
+
+    submitBtn.textContent = 'Save selected';
+    updateButtons();
   });
 
   async function loadFaces() {
     try {
       const res = await fetch(`${apiUrl}/api/faces/`);
       const data = await res.json();
-      renderFaces(data.faces);
+      renderFaces(data.faces || []);
     } catch {
       faceList.innerHTML = '<li class="empty">The list did not answer.</li>';
     }
@@ -189,4 +394,5 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
   }
 
   loadFaces();
+  updateButtons();
 </script>

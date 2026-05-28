@@ -9,19 +9,23 @@ interface Props {
 
 const {
   title,
-  description = "Facial recognition capstone by Thavanish B, XII B1, Maharishi Vidya Mandir.",
+  description = 'Face Lab is a school facial recognition capstone project by Thavanish B, XII B1, Maharishi Vidya Mandir.',
 } = Astro.props;
 
 const currentPath = Astro.url.pathname;
 ---
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{title} | Face Lab</title>
   <meta name="description" content={description} />
+  <script is:inline>
+    const savedTheme = localStorage.getItem('face-lab-theme');
+    document.documentElement.dataset.theme = savedTheme || 'dark';
+  </script>
 </head>
 <body>
   <Nav currentPath={currentPath} />
@@ -29,7 +33,16 @@ const currentPath = Astro.url.pathname;
     <slot />
   </main>
   <footer class="site-footer">
-    <p>Thavanish B, XII B1, Maharishi Vidya Mandir, 2025 to 2026</p>
+    <div>
+      <strong>Face Lab</strong>
+      <p>MIT licensed school capstone by Thavanish B, XII B1, Maharishi Vidya Mandir.</p>
+    </div>
+    <nav aria-label="Project links">
+      <a href="https://github.com/thavanish/fsc-project-school" target="_blank" rel="noreferrer">GitHub repo</a>
+      <a href="/register">Register faces</a>
+      <a href="/identify">Identify</a>
+      <a href="/verify">Verify</a>
+    </nav>
   </footer>
 </body>
 </html>

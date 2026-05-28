@@ -3,82 +3,85 @@ import Base from '../layouts/Base.astro';
 ---
 
 <Base title="Home">
-  <header class="page-head">
-    <div>
-      <p class="eyebrow">Face Lab</p>
-      <h1>Small face checks, no ceremony.</h1>
+  <section class="home-hero reveal">
+    <div class="hero-copy">
+      <p class="eyebrow">School capstone, computer science</p>
+      <h1>Face recognition, shown step by step.</h1>
       <p class="page-subtitle">
-        Add a person, find a person, or compare two photos. The app keeps the math visible enough to trust.
+        This project demonstrates how a camera image becomes a face embedding, how the backend compares it
+        with saved samples, and why a match is accepted or rejected.
       </p>
+      <div class="hero-actions" aria-label="Primary actions">
+        <a class="btn btn-link" href="/register">Start registration</a>
+        <a class="btn btn-secondary" href="/identify">Run identify</a>
+      </div>
     </div>
-    <aside class="hero-note">
-      <strong>Cutoff: 0.55</strong>
-      <p>Lower distance means the faces look closer to the model.</p>
-    </aside>
-  </header>
 
-  <section class="panel">
-    <h2>How the app reads a face</h2>
-    <ol class="number-list">
-      <li>The detector finds one face in the photo and ignores the rest of the scene.</li>
-      <li>The model turns that face into 128 numbers called an embedding.</li>
-      <li>The app compares distances. Close numbers usually mean the same person. Far numbers usually mean no.</li>
-      <li>A distance below 0.55 counts as a match for this capstone build.</li>
+    <div class="scanner-board" aria-label="Face recognition pipeline preview">
+      <div class="scan-window">
+        <span class="corner top-left"></span>
+        <span class="corner top-right"></span>
+        <span class="corner bottom-left"></span>
+        <span class="corner bottom-right"></span>
+        <div class="face-grid">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div class="scan-line"></div>
+      </div>
+      <ul class="pipeline-list">
+        <li><span>01</span>Detect face</li>
+        <li><span>02</span>Encode features</li>
+        <li><span>03</span>Compare distance</li>
+        <li><span>04</span>Return confidence</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="project-strip reveal">
+    <article>
+      <h2>What we are building</h2>
+      <p>
+        Face Lab is a full-stack facial recognition demo. The frontend is Astro, the backend is FastAPI,
+        and the recognition layer uses dlib through the <code>face_recognition</code> Python library.
+      </p>
+    </article>
+    <article>
+      <h2>Why it matters</h2>
+      <p>
+        The goal is not a mystery button. The interface shows detection count, distance, confidence, and
+        failure states so the model's decision can be explained during a school presentation.
+      </p>
+    </article>
+  </section>
+
+  <section class="system-map reveal" aria-labelledby="system-title">
+    <div>
+      <p class="eyebrow">Workflow</p>
+      <h2 id="system-title">From camera frame to answer</h2>
+    </div>
+    <ol class="number-list wide-list">
+      <li>Register a person with clear camera captures or uploaded images.</li>
+      <li>The API finds the most useful face in the image and stores its 128-value embedding.</li>
+      <li>Identify compares a new image against saved embeddings and returns the closest known person.</li>
+      <li>Verify compares two images directly and reports whether they appear to be the same person.</li>
     </ol>
   </section>
 
-  <nav class="action-grid" aria-label="Face Lab tasks">
-    <a href="/register" class="action-card">
-      <span class="icon-shell">
-        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-          <circle cx="8.5" cy="7" r="4"></circle>
-          <line x1="20" y1="8" x2="20" y2="14"></line>
-          <line x1="23" y1="11" x2="17" y2="11"></line>
-        </svg>
-      </span>
-      <span>
-        <h2>Register</h2>
-        <p>Put a named face in the list.</p>
-      </span>
+  <nav class="task-matrix reveal" aria-label="Face Lab tasks">
+    <a href="/register" class="task-row">
+      <span class="task-index">Register</span>
+      <strong>Capture several samples</strong>
+      <p>Add clean photos, analyze frames, and save them for matching.</p>
     </a>
-    <a href="/identify" class="action-card">
-      <span class="icon-shell">
-        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-      </span>
-      <span>
-        <h2>Identify</h2>
-        <p>Ask the list for its closest person.</p>
-      </span>
+    <a href="/identify" class="task-row">
+      <span class="task-index">Identify</span>
+      <strong>Find the closest saved face</strong>
+      <p>Upload an unknown face and inspect distance, margin, and confidence.</p>
     </a>
-    <a href="/verify" class="action-card">
-      <span class="icon-shell">
-        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M9 12l2 2 4-4"></path>
-          <path d="M21 12c-1 5-4 8-9 10-5-2-8-5-9-10V5l9-3 9 3z"></path>
-        </svg>
-      </span>
-      <span>
-        <h2>Verify</h2>
-        <p>See whether two photos agree.</p>
-      </span>
+    <a href="/verify" class="task-row">
+      <span class="task-index">Verify</span>
+      <strong>Compare two photos</strong>
+      <p>Check whether two images likely belong to the same person.</p>
     </a>
   </nav>
-
-  <section class="facts">
-    <div class="panel panel-muted">
-      <h2>What is inside</h2>
-      <p>
-        The backend uses FastAPI, dlib, and face_recognition. The frontend is Astro. The point is simple:
-        show the decision, the distance, and the confidence without hiding the rough edges.
-      </p>
-    </div>
-    <div class="panel panel-muted">
-      <h3>Best photos</h3>
-      <p>Front facing, bright, and uncropped. Sunglasses and motion blur make the model guess harder.</p>
-    </div>
-  </section>
 </Base>
