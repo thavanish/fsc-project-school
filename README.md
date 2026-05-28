@@ -66,7 +66,7 @@ Set `PUBLIC_API_URL=http://localhost:8000` in `frontend/.env` for local backend 
 
 ### Backend on Render
 
-The repo includes `render.yaml` for a Render Blueprint. It deploys `backend/` as a Python web service on the `starter` plan because saved face registrations need a persistent disk. It runs:
+The repo includes `render.yaml` for a Render Blueprint. It deploys `backend/` as a free Python web service. It runs:
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -77,7 +77,7 @@ Create a Render Blueprint from this repository, then confirm these environment v
 ```bash
 ALLOWED_ORIGINS=https://face.thavanish.dedyn.io,http://localhost:4321
 STORAGE_BACKEND=local
-STORAGE_FILE=/var/data/faces.json
+STORAGE_FILE=data/faces.json
 MATCH_THRESHOLD=0.55
 AMBIGUITY_MARGIN=0.035
 MAX_UPLOAD_BYTES=4300000
@@ -86,7 +86,7 @@ REGISTER_JITTERS=2
 QUERY_JITTERS=1
 ```
 
-The Blueprint attaches a small disk at `/var/data` so saved registrations can survive deploys. If you create the service manually instead, use `backend` as the root directory, `pip install -r requirements.txt` as the build command, and the `uvicorn` command above as the start command. If you must use Render's free service, remove the `disk` block and accept that local face data can disappear on restarts.
+Free Render web services do not provide durable local file storage, so saved face registrations can disappear after restarts or redeploys. That is acceptable for a school demo, but not for a real face database. If you create the service manually instead, use `backend` as the root directory, `pip install -r requirements.txt` as the build command, and the `uvicorn` command above as the start command.
 
 ### Frontend
 

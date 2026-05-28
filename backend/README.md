@@ -13,7 +13,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## Render deploy
 
-The repo root includes `render.yaml` for a Render Blueprint. It creates a Python web service with `backend` as the root directory. The Blueprint uses Render's `starter` plan because saved face registrations need a persistent disk.
+The repo root includes `render.yaml` for a Render Blueprint. It creates a free Python web service with `backend` as the root directory.
 
 Manual Render settings:
 
@@ -26,7 +26,7 @@ Recommended environment variables:
 ```bash
 ALLOWED_ORIGINS=https://face.thavanish.dedyn.io,http://localhost:4321
 STORAGE_BACKEND=local
-STORAGE_FILE=/var/data/faces.json
+STORAGE_FILE=data/faces.json
 MATCH_THRESHOLD=0.55
 AMBIGUITY_MARGIN=0.035
 MAX_UPLOAD_BYTES=4300000
@@ -35,7 +35,7 @@ REGISTER_JITTERS=2
 QUERY_JITTERS=1
 ```
 
-For persistent registrations, attach a Render disk at `/var/data`. The included Blueprint does this with a 1 GB disk. If you must use a free web service, remove the disk and expect local registrations to disappear after restarts.
+Free Render web services do not provide durable local file storage, so saved registrations can disappear after restarts or redeploys. For a school demo this is usually fine. For a real persistent database, use a paid disk or an external storage service.
 
 ## Free plan notes
 
