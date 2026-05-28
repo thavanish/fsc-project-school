@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -57,6 +58,12 @@ def _index_to_payload(index: FaceIndex) -> dict[str, Any]:
     return {"version": 2, "updated_at": now, "faces": faces}
 
 
+def _local_path() -> Path:
+    if os.getenv("VERCEL"):
+        return Path("/tmp/face-lab/faces.json")
+    return Path(get_settings().storage_file)
+
+
 async def _read_blob() -> dict[str, Any] | None:
     settings = get_settings()
     try:
@@ -106,7 +113,7 @@ async def _write_blob(payload: dict[str, Any]) -> bool:
 
 
 def _read_local() -> dict[str, Any]:
-    path = Path(get_settings().storage_file)
+    path = _local_path()
     if not path.exists():
         return _empty_payload()
 
@@ -118,7 +125,7 @@ def _read_local() -> dict[str, Any]:
 
 
 def _write_local(payload: dict[str, Any]) -> None:
-    path = Path(get_settings().storage_file)
+    path = _local_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
